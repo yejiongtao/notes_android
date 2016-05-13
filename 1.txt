@@ -1,0 +1,151 @@
+1.Activity --a class of NDK to manage the activities
+	write subclass of it to implement functionalities
+widget --component of the interface, such as buttons, layouts, etc
+
+2.layout xml
+	layout xml is not validated, so watch out when typing
+	As the root element, the LinearLayout must specify the Android resource XML namespace at http://schemas.android.com/apk/res/android.
+
+3. View --a class representing a widget
+ViewGroup --subclass of View, a widget that contains others, namely LinearLayout, FrameLayout, TableLayout, and RelativeLayout
+
+4. some attributes
+android:layout_width and android:layout_height
+	required for almost every type of widget, typically set to "match_parent" or "wrap_content"
+	these attributes of the root View are usually set to be "match_parent". its parent is the one Android provided for the app
+android:padding="24dp"
+	adds some room when determining the size
+android:orientation="horizontal"
+	or "vertical"
+	for linearLayout
+android:text="@string/question_text"
+	the strings are usually put in a seperate file, for the purpose of easier localization
+	Every project includes a default strings file named strings.xml
+	You can also have multiple strings files in a project. As long as the file is located in res/values/, has a resources root element, and contains child string elements
+
+4. Activity
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {	// called when an instance is created
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_quiz);	// inflates the layout that is specified, creates all the View items in the layout
+	}						// R is a static class auto-created, layout is its static subclass, and activity_quiz refers to the ID of the layout
+
+5. resource ID
+	the resource ID of a string: R.string.string_name
+	widgets that are not layouts do not have a resource ID, but if the widget needs to be refer to in the code, we can create one for it in the xml file:
+		android:id="@+id/true_button"
+		(actually, Android only creates ids for the whole xml file, layouts inside a View has no auto-created ids)
+	@  means referencing
+	@+  means creating
+
+6. Button
+private Button mTrueButton = (Button) findViewById(R.id.true_button);
+	R is only based on the resources, so it is there at the beginning, so you can just use it for instantialization
+	mTrueButton starts with m, which is a convention of Android
+	findViewById() returns an instance of View
+Android SDK provides variant event listeners, such as View.OnClickListener interface
+	mTrueButton.setOnClickListener(new OnClickListener(){
+            @Override
+            public void onClick(View view) {}
+        });
+
+7.Toast  --some text popping up
+	Toast.makeText(QuizActivity.this,		// instance of Context, which is the father of Activity, used for finding resources
+                        R.string.correct_toast,		// id of the string
+			Toast.LENGTH_LONG)		// duration, either LENGTH_LONG or LENGTH_SHORT
+			.show();			// show() to show the toast
+							
+8. generate getters and setters automatically
+	Open Android Studio’s preferences. 
+	Expand Editor and then expand Code Style. 
+	Select Java, then choose the Code Generation tab.
+	In the Naming table, select the Field row and add m as the Name prefix for fields. Then add s as the Name prefix for static fields.
+
+9. Android applications are designed around MVC
+	model classes are generally custom classes you create to hold the data
+	view objects can be seen on the screen
+	a controller is typically a subclass of Activity, Fragment or Service, containing the application logic
+
+10. debugging on a hardware device
+	On devices running Android 4.2 or later, Developer options is not visible by default. 
+	To enable it, go to Settings -> About Tablet/Phone and press Build Number 7 times. 
+	Then you can return to Settings, see Developer options, and enable USB debugging.
+
+11. adding an icon
+	put the images into the drawable-hdpi, drawable-mdpi, drawable-xhdpi, etc, which are in GeoQuiz/app/src/main/res
+	Android will determine which one to use based on the screen resolution of the device
+	but dont't put too many icons, or the application will be huge, just put some of the high qualities and Android will deal with it
+	a resource ID will be assigned to the picture. same pictures with different resolution share a same ID!!
+	then refer to it in the xml
+		<Button
+		    android:drawableRight="@drawable/arrow_right"	//in this way, you add an icon at the right of the Button
+		    android:drawablePadding="4dp"
+		/>
+
+12. ImageIcon
+	android:src="@drawable/arrow_right"
+	android:contentDescription=""		supports accessibility for low-vision readers by reading out loud the description
+
+13. the activity lifecycle --every instance of Activity has a lifecycle
+	running -onPause()-> paused(visible, but not in foreground) -onStop()-> stopped(not visible) -onDestroy()-> non-existent(destroyed)
+	non-existent -onCreate()-> stopped -onStart()-> paused -onResume()-> running
+	**you never call onCreate(…) or any of the other Activity lifecycle methods yourself. You override them in your activity subclasses, and Android calls them at the appropriate time
+		and you always call the super method of it 
+	pressing the back button will destroy the app
+		pressing the home button will just stop the app
+		however, the survival of a stopped app is not guaranteed, due to the memory management
+	when stopped, then Activity object will still be in the memory
+
+14. android.util.Log
+	Log.d(TAG, "onDestroy() called");	//usually TAG is defined as a constant string of class name
+
+15. rotation
+	Android keeps determining the best resource for you. to implement that, when runtime configurations, such as orientation, keyboard availability, language, etc, change, it will destroy and then recreate the app
+Creating a landscape layout
+	add a Android resource directory
+	choose orientation as qualifier and choose landscape
+	copy the activity_quiz.xml file to the directory and then modify it to the way you want
+	( actually, create a layout file using the same name of the original one, and set the qualifier to orientation will do)
+
+16. FrameLayout
+	is the simplest ViewGroup
+	child views are arranged according to their android:layout_gravity attributes
+
+17. saving data across rotation
+	onSaveInstanceState(Bundle) is called before app shut down, and then data was retrieved when onCreate(Bundle) was called
+	onSaveInstanceState() will be called after onPause, if the app is not shut down by the user manually
+	so there is no need of worrying the state of View objects will be lost
+	however, if you want to save additional data, you should override onSaveInstanceState(Bundle), and put the data into the Bundle instance
+		@Override
+		public void onSaveInstanceState(Bundle savedInstanceState) {
+			super.onSaveInstanceState(savedInstanceState);
+			savedInstanceState.putInt(KEY_INDEX, mCurrentIndex);		//KEY_INDEX is just a constant I created
+		}
+	then restore it in onCreate(Bundle)
+		if (savedInstanceState != null) {
+			mCurrentIndex = savedInstanceState.getInt(KEY_INDEX, 0);
+		}
+	what you can save to and restore from a Bundle are primitive types and classes that implement the Serializable or Parcelable interfaces
+	because the data might be stale when you get it back out. It is a better choice to use some other kind of storage for the data and put a primitive identifier into the Bundle instead
+
+18. stashed state
+	when the Activity instance is killed (destroyed), there is a activity state remains in the memory
+	Activity state is where the data is stored via onSaveInstanceState(Bundle)
+	when does activity state get discarded:
+		user closes the app by pressing the back button
+		reboot
+		not use for a long time
+	in the developer options, you can turn on Don’t keep activities, which means if a app is paused or stopped, its AR and itself will be instantly cleared off as if a memory reclaiming happens
+
+19. logging levels
+	error	Log.e()
+	warning	Log.w()
+	info	Log.i()
+	debug	Log.d()
+	verbose Log.v()
+	can take a third attribute, a Throwable.  in this way the stack trace will be logged. 
+		try {
+			//...
+		} catch (ArrayIndexOutOfBoundsException ex) {
+			Log.e(TAG, "Index was out of bounds", ex);	// the Throwable does not have to be an exception you caught, can create a new Exception()
+		}
