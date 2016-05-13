@@ -1,0 +1,198 @@
+1.
+Button, CheckBox, TextView, EditText, RecyclerView, Toast, ImageIcon, ViewPager, DatePicker
+
+2. sreen pixel densities
+		Margins specify the distances between views
+		padding specifies the distance between a view’s outside edges and its content	
+	Android translates these values into pixels in runtime
+	dp --density-independent pixel
+		typically used for margins and paddings
+		one dp is always 1/160th of an inch on a device's screen, which means you get the same size regradless of screen density
+	sp --scale-independent pixel
+		density-independent pixels that take into account that user's font size preference
+		always used for font size
+	px --pixel
+		fixed pixels, so size varies from different screen density
+	http://​developer.android.com/​design/​index.html  Android design guidelines
+		you should follow these guidelines as closely as possible
+
+3.  layout parameters
+	those attributes begin with layout_, such as layout_width, layout_height, layout_margin, are actually attributes for its parent's use
+	those without layout_ is for the widget itself
+		e.g.	layout_margin is for the parent to deside the distance between widgets
+			padding is to determine the size of the widget itself
+
+4. using the graphical layout tool
+	create a landscape layout easily, by clicking the button on the top left
+	drag the widget to the preview or to the component tree to add it
+	modify the attributes
+
+5. layout_weight attribute
+	works with layout_width to determine the widths of the widgets, or with layout_height to determine the heights of the widgets
+	LinearLayout makes two passes to determine the widths:
+		pass 1: check the layout_width.  for example they are wrap_content, then their width will be currently the same as their contents
+		pass 2: check the layout_weight. then LinearLayout distribute the remaining spaces according to the ratio of the layout_weights
+	if you want the widths of the two widgets to be exactly 2:1
+		just skip the first pass by setting the layout_widths to be 0dp, and then layout_weights to be 2:1
+
+6. tips concerning multiple layouts
+	while layouts may vary dramatically, do the null-checking in the code when accessing the widget
+		Button landscapeOnlyButton = (Button)v.findViewById(R.id.landscapeOnlyButton);
+		if (landscapeOnlyButton != null) {
+		    // Set it up
+		}
+	make sure that a widget must have the same android:id attribute in every layout 
+
+7. Singletons
+	a design pattern, to ensure that there is only one instance of a class to be created in the whole app
+	to me, it has 3 characteristics:
+		static, so that the whole app shares the same one 
+		always checking if it already exists before creating
+		forbide clone()
+	example:
+		public class SingletonObject
+		{
+			private static SingletonObject ref;
+
+			private SingletonObject()
+			{
+				// some coded
+			}
+
+			public static synchronized SingletonObject getSingletonObject()		// note the synchronized
+			{
+				if (ref == null)
+					// it's ok, we can call this constructor
+					ref = new SingletonObject();		
+				return ref;
+			}
+
+			public Object clone() throws CloneNotSupportedException
+			{
+				throw new CloneNotSupportedException(); 
+				// that'll teach 'em
+			}
+		}
+	The singleton pattern must be carefully constructed in multi-threaded applications
+
+7.5 about static objects in Android
+	static objects stay in the memory as long as the app object is still there
+		if the app gets destroyed, then static objects are also bye-bye
+			so maybe we should write data to disks in onDestroy()
+		however, in some rare situations, Android may kill the app without calling onDestroy()
+			so to be conservative, we should save data in onStop()
+		(actually, when pressing the back button, onDestroy() is called, but static data is still alive!)
+			but in terms of conservation, we just regard this
+		as for rotation, onDestroy() is also called, but static data also survive!
+	so singletons will live across rotation and will exist as you move between activities and fragments in your app
+
+8. resue the code
+	layout files can be shared by Activitis
+		for example, the layout file that host nothing but a fragment is generic
+			<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+				android:id="@+id/fragment_container"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+			/>
+	and the activity to host a fragment is also generic
+		so we could create an abstract class in order to reuse it
+			public abstract class SingleFragmentActivity extends FragmentActivity {
+				protected abstract Fragment createFragment();	// to be implemented by the subclass of SingleFragmentActivity
+
+				@Override
+				public void onCreate(Bundle savedInstanceState) {
+					super.onCreate(savedInstanceState);
+					setContentView(R.layout.activity_fragment);
+
+					FragmentManager fm = getSupportFragmentManager();
+					Fragment fragment = fm.findFragmentById(R.id.fragment_container);
+
+					if (fragment == null) {
+					    fragment = createFragment();
+					    fm.beginTransaction()
+						.add(R.id.fragment_container, fragment)
+						.commit();
+					}
+				}
+			}
+
+9. RecyclerView
+	it creates 12 of the Views it is holding, enough to fill the screen. and when scrolled off, RecyclerView resuses them
+	2 components:
+		RecyclerView.ViewHolder
+			holds a View
+		RecyclerView.Adapter
+			responsible for creating the necessary ViewHolders, and binding ViewHolders to data from the model layer
+		and RecyclerView relies on a LayoutManager to handle the positioning of items and also defines the scrolling behavior 
+	using a RecyclerView:
+		add the RecyclerView library as a dependency
+		add it to the layout in the xml file of the fragment. (assuming we are using a fragment)
+		get it in onCreateView(), and create a LayoutManager for it
+			mCrimeRecyclerView = (RecyclerView) view
+				.findViewById(R.id.crime_recycler_view);
+			mCrimeRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));	// use GridLayoutManager for grids
+		Viewholder
+			define the ViewHolder as an inner class in CrimeListFragment
+				public class CrimeListFragment extends Fragment {
+					...
+
+					private class CrimeHolder extends RecyclerView.ViewHolder {
+
+						public TextView mTitleTextView;
+	
+						public CrimeHolder(View itemView) {
+							super(itemView);
+							mTitleTextView = (TextView) itemView;
+						}
+					}
+				}
+			
+		Adapter --the one deals with the data
+			also as an inner class
+				public class CrimeListFragment extends Fragment {
+					...
+
+					private class CrimeAdapter extends RecyclerView.Adapter<CrimeHolder> {
+						private List<Crime> mCrimes;
+
+						public CrimeAdapter(List<Crime> crimes) {
+							mCrimes = crimes;
+						}
+
+						@Override	//called by the RecyclerView when it needs a new View to display an item.
+						public CrimeHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+							LayoutInflater layoutInflater = LayoutInflater.from(getActivity());
+							View view = layoutInflater
+								.inflate(android.R.layout.simple_list_item_1, parent, false);
+								//simple_list_item_1 is a layout from the Android standard library, which contains a single TextView
+								//customized layout can be use here
+							return new CrimeHolder(view);
+						}
+
+						@Override	//binds a ViewHolder’s View to your model object. 
+								//It receives the ViewHolder and a position in your data set
+						public void onBindViewHolder(CrimeHolder holder, int position) {
+							Crime crime = mCrimes.get(position);
+							holder.mTitleTextView.setText(crime.getTitle());
+						}
+
+						@Override
+						public int getItemCount() {
+							return mCrimes.size();
+						}
+					}
+				}
+		connect the Adapter to the RecyclerView
+			implement a method in CrimeListFragment, and use it in onCreateView()
+				private void updateUI() {
+					CrimeLab crimeLab = CrimeLab.get(getActivity());	// this is how we use a Singleton
+					List<Crime> crimes = crimeLab.getCrimes();
+
+					mAdapter = new CrimeAdapter(crimes);
+					mCrimeRecyclerView.setAdapter(mAdapter);
+				}
+	in this case, the hierachy is:
+		an activity with a blank layout, to contain the fragment
+		a fragment with a layout
+		somewhere in the layout of the fragment, place the RecyclerView
+		there's a layout for the item of the list, bind it with the ViewHolder

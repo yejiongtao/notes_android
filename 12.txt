@@ -1,0 +1,49 @@
+1. more on AsyncTask
+	AsyncTask<Void,Void,Void>
+	parameters
+		the first one specifies the type of input parameters you will pass to the execute()
+			which are received by doInBackground(Void...)
+			a variable number of arguments
+				task.execute("First parameter", "Second parameter", "Etc.");
+		the second one specifies the type for sending progress updates
+			Progress updates usually happen in the middle of an ongoing background process
+			but you cannot make the necessary UI updates inside that background process
+			so you call publishProgress(...) from doInBackground()
+				which will invoke onProgressUpdate(Void...) and pass data to it
+				onProgressUpdate(Void...) is run on the UI thread, so you can override it to update UI
+		the third one specifies the return type of the doInBackground()
+			which receives by onPostExecute(Void...)
+
+2. alternative to AsyncTask: AsyncTaskLoader
+	if you use an AsyncTask to load data, you are responsible for managing its lifesycle
+		situations you have to consider:
+			configuration changes, such as rotation
+			user presses the back button
+			the fragment that launched the AsyncTask getting destroyed during execution by the OS due to a low-memory situation
+	using Loader can take some of this responsibility off your hands
+		a Loader loads data from some source, such as disk, database, ContentProvider, network, etc.
+	AsyncTaskLoader uses another thread, i.e., an AsyncTask to do the loading
+		during configuration changes, the LoaderManager will keep the loaders alive, along with their data
+		LoaderManager is responsible for starting, stopping, and maintaining the lifecycle of the Loaders
+		after configuration changes, if you initialize a loader that has already finished loading its data,
+			it can deliver that data immediately, instead of fetching it again
+
+3. RecyclerView.onScrollListener
+	can detect when you are at the end of the results
+	and then you can add new results to it
+
+4. dynamically adjust the number of columns of the RecyclerView
+	one way to do this is create an integer resource with a orientation qualifier
+		Integer resources should be placed in res/values
+		but the number of columns are actually hard-coded in this way
+	another approach is to calculate the number in your code 
+		based on the width of the RecyclerView and a predetermined constant column width
+		you cannot calculate the number of columns in onCreateView() because the RecyclerView will not be sized yet
+			implement a ViewTreeObserver.OnGlobalLayoutListener
+			put your column calculation code in onGlobalLayout()
+			Add the listener to your RecyclerView using addOnGlobalLayoutListener().
+
+5. downloading lots of small things
+	download them when they need to be displayed on screen
+		triggers the downloading in RecyclerView.onBindViewHolder()
+

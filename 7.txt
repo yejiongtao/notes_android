@@ -1,0 +1,173 @@
+1. Android Device Monitor 
+	if you run your app on an emulator or a rooted device, you can use this to monitor the device, in terms of threads, heap, network, file, etc
+		Tools -> Android -> Android Device Monitor
+	databases are stored in
+		/data/data/com.bignerdranch.android.criminalintent/databases/
+
+2. implicit intent
+	an intent is an object that describes to the OS something that you want it to do
+		in an explicit intent, you specify the class of the activity in your app to start
+		in an inplicit intent, you describe the job you need done, and the OS will start an activity in an appropriate app for you 
+	parts of an implicit intent
+		action you want to perfrom
+			typically constants from the Intent class, such as Intent.ACTION_VIEW for viewing a URL, or Intent.ACTION_SEND to send something
+		the location of any data
+			can be something outside the device, like URL of a web page
+			can be a URI(uniform resource identifier) to a file
+			can be a content URI pointing to a record in a ContentProvider
+		the type of data that the action is for
+			a MIME(Multipurpose Internet Mail Extensions) type, like text/html or audio/mpeg3
+			if an intent includes a location for data, then the type can usually be inferred from that data
+		optional categories
+			describes where, when, or how you are trying to use an activity
+			android.intent.category.LAUNCHER indicates that an activity should be displayed in the top-level app launcher
+			android.intent.category.INFO category indicates an activity that shows information about a package to the user but should not show up in the launcher
+		implicit intent can also have extras
+			extras are not used to find an appropriate activity
+	intent filter
+		an activity advertises itself as an appropriate activity for actions via an intent filter in the manifest
+			<activity
+			  android:name=".BrowserActivity"
+			  android:label="@string/app_name" >
+			  <intent-filter>
+			    <action android:name="android.intent.action.VIEW" />		what am I capable of 
+			    <category android:name="android.intent.category.DEFAULT" />		DEFAULT category means I shold be considered when the OS is asked for volunteers
+			    <data android:scheme="http" android:host="www.bignerdranch.com" />
+			  </intent-filter>
+			</activity>
+	to use it 
+		to send something (do not need feedback from the app, no location of data needed)
+			Intent i = new Intent(Intent.ACTION_SEND);		// action
+			i.setType("text/plain");				// data type
+			i.putExtra(Intent.EXTRA_TEXT, getCrimeReport());	// put the string as extras
+			i.putExtra(Intent.EXTRA_SUBJECT,			// !! we use Intent class's constants as keys, in this way any activity will know this keys
+				getString(R.string.crime_report_subject));
+			i = Intent.createChooser(i, getString(R.string.send_report));	// in this way, OS will create a chooser every time
+					// otherwise if default app is set, a chooser will not appear
+					// if you don't need it appear every time, just skip this one
+			startActivity(i);
+		to choose a person from the contact ( need feedback, so call startActivityForResult(), and location of data needed)
+			create an intent and start the activity
+				Intent pickContact = new Intent(Intent.ACTION_PICK,
+					ContactsContract.Contacts.CONTENT_URI);		// here is the location of the contacts database
+				startActivityForResult(pickContact, REQUEST_CONTACT);
+			get a result back, inside onActivityResult(int requestCode, int resultCode, Intent data)
+				    if (requestCode == REQUEST_CONTACT && data != null) {
+
+					Uri contactUri = data.getData();		// points to the exact person you selected
+					String[] queryFields = new String[] {		// Specify which fields you want your query to return values for.
+						ContactsContract.Contacts.DISPLAY_NAME
+					};
+
+					// Perform your query - the contactUri is like a "where" clause here
+					Cursor c = getActivity().getContentResolver()
+						.query(contactUri, queryFields, null, null, null);
+
+					try {
+					    if (c.getCount() == 0) {
+						return;
+					    }
+
+					    // Pull out the first column of the first row of data - that is your suspect's name.
+					    c.moveToFirst();
+					    String suspect = c.getString(0);
+					    mCrime.setSuspect(suspect);
+					    mSuspectButton.setText(suspect);
+					} finally {
+					    c.close();
+					}
+				    }
+				// contacts information are shared by many apps, so Android provides an in-depth API for working with contacts info through a ContentProvider
+					instances of ContentProvider wrap databases and make it available to other apps.
+					you can access a ContentProvider through a ContentResolver
+				// contact permissions
+					the contacts app extends its permission of the single contact info to your app
+		to dial someone
+			query for phone number using ContactsContract.CommonDataKinds.Phone
+				check the documents
+			once you have the number
+				Uri number = Uri.parse("tel:5551234");
+			Intent.ACTION_DIAL just dials the number
+			Intent.ACTION_CALL calls the number immediately
+	PackageManager
+		if there's no app found for the needed function, your app will crash
+		PackageManager knows about all the components installed on your device, including all its activities
+			    PackageManager packageManager = getActivity().getPackageManager();
+			    if (packageManager.resolveActivity(pickContact,
+				    PackageManager.MATCH_DEFAULT_ONLY) == null) {
+				mSuspectButton.setEnabled(false);
+			    }
+			// The MATCH_DEFAULT_ONLY flag restricts this search to activities with the CATEGORY_DEFAULT flag, just like startActivity(Intent) does
+
+	
+3. using a format String
+	<string name="crime_report"> %1$s! The crime was discovered on %2$s. %3$s, and %4$s </string>
+	and use 
+		string = getString(R.string.crime_report, string1, string2, string3, string4);
+DateFormat
+	String dateFormat = "EEE, MMM dd";
+	String dateString = DateFormat.format(dateFormat, mCrime.getDate()).toString();
+
+4. include a layout file
+	if your layout and the landscape version of it have a large section in common
+		you can create a layout file for the section, and just include it
+		<include layout="@layout/layout_section"></include>
+	No special steps are required to find views inside included layouts
+		Call findViewById(int) as usual on your inflated view
+	you can add attributes to the <include>, they will overwrite those already exist in the included file
+	but don't always use inclusion
+		because in this way you cannot see your view clearly by looking at one layout file
+
+5. storage
+	private storage  --other app cannot access
+		SQLite database is stored in the private storage
+		Context provides some methods to get to the private storage
+			File getFilesDir()
+				Returns a handle to the directory for private application files.
+			FileInputStream openFileInput(String name)
+				Opens an existing file for input (relative to the files directory).
+			FileOutputStream openFileOutput(String name, int mode)
+				Opens a file for output, possibly creating it (relative to the files directory).
+			File getDir(String name, int mode)
+				Gets (and possibly creates) a subdirectory within the files directory.
+			String[] fileList()
+				Gets a list of file names in the main files directory, such as for use with openFileInput(String).
+			File getCacheDir()
+				Returns a handle to a directory you can use specifically for storing cache files. You should take care to keep this directory tidy and use as little space as possible.
+	external storage
+			other apps can access it
+		there are two kinds of external storage --primary and everything else
+		Context provides some methods to get to primary extenal storage
+			File getExternalCacheDir()
+				Returns a handle to a cache folder in primary external storage. Treat it like you do getCacheDir(), except a little more carefully. Android is even less likely to clean up this folder than the private storage one.
+			File[] getExternalCacheDirs()
+				Returns cache folders for multiple external storage locations.
+			File getExternalFilesDir(String)
+				Returns a handle to a folder on primary external storage in which to store regular files. If you pass in a type String, you can access a specific subfolder dedicated to a particular type of content. Type constants are defined in Environment, where they are prefixed with DIRECTORY_. For example, pictures go in Environment.DIRECTORY_PICTURES.
+			File[] getExternalFilesDirs(String)
+				Same as getExternalFilesDir(String), but returns all possible file folders for the given type.
+			File[] getExternalMediaDirs()
+				Returns handles to all the external folders Android makes available for storing media – pictures, movies, and music. What makes this different from calling getExternalFilesDir(Environment.DIRECTORY_PICTURES) is that the media scanner automatically scans this folder. The media scanner makes files available to applications that play music, or browse movies and photos, so anything that you put in a folder returned by getExternalMediaDirs() will automatically appear in those apps.
+
+6. to store an image in the external storage
+	    public File getPhotoFile(Crime crime) {
+		File externalFilesDir = mContext
+			.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+
+		if (externalFilesDir == null) {
+		    return null;
+		}
+		return new File(externalFilesDir, crime.getPhotoFilename());
+	    }
+	//the above method does not create any files on the filesystem, just returns File objects that point to the right location
+
+7. permission for external storage
+	in manifest, you state the permissions you need, and then before installation, Android will ask use for it
+		<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+			package="com.bignerdranch.android.criminalintent" >
+			<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+			     android:maxSdkVersion="18"		// API 19 and up, you do not need permission for the specific folder for you app in external storage 
+			/>						// which it returned by Context.getExternalFilesDir(String)
+	note that we only ask for read permission,
+		the camera app will do the write job for you 
+
