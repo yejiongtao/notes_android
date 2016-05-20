@@ -47,3 +47,97 @@
 	download them when they need to be displayed on screen
 		triggers the downloading in RecyclerView.onBindViewHolder()
 
+6. more about intent filters
+	launchable main activity
+		those activities with the following intent-filter
+			<intent-filter>
+			  <action android:name="android.intent.action.MAIN" />
+			  <category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		the MAIN action indicates this activity is the main entry point of the app and does not expect any intent data.
+		the LAUNCHER category indicates that this activity's icon should be places in the system's app launcher
+			if the <activity> doesn't specify a icon, system will use the <application>'s icon
+	every activities in an app can have an intent filter
+		e.g. if an activity has a ACTION_VIEW and CATEGORY_DEFAULT, its icon won't be shown in the system's launcher, 
+			but besides navigating from main activity, this activity can be accessed directly by other app via implicit intents
+		CATEGORY_DEFAULT is needed for an activity to be found by startActivity(Intent)
+			because startAcitivty(Intent) will secretly add Intent.CATEGORY_DEFAULT category to the intent
+			so only those filters with CATEGORY_DEFAULT will match and be displayed.
+		if the MAIN/LAUNCHER activity does not contain CATEGORY_DEFAULT, it won't match the Intent from startActivity either
+
+7. find lauchable apps using PackageManager
+	code:
+		Intent startupIntent = new Intent(Intent.ACTION_MAIN);
+		startupIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+
+		PackageManager pm = getActivity().getPackageManager();
+		List<ResolveInfo> activities = pm.queryIntentActivities(startupIntent, 0);	// returns a list of ResolveInfo objects, which contain metadata
+	you can sort the ResolveInfo object based on the label
+		Collections.sort(activities, new Comparator<ResolveInfo>() {
+		    public int compare(ResolveInfo a, ResolveInfo b) {
+			PackageManager pm = getActivity().getPackageManager();
+			return String.CASE_INSENSITIVE_ORDER.compare(
+				a.loadLabel(pm).toString(),
+				b.loadLabel(pm).toString());		// ResolveInfo.loadLabel(PackageManager)
+									// ResolveInfo.loadIcon(PackageManager)
+		    }
+		});
+
+8. start an activity in another app using explicit intent
+	you need to get the activity’s package name and class name from a part of the ResolveInfo, ActivityInfo
+	code
+		ActivityInfo activityInfo = mResolveInfo.activityInfo;
+
+		Intent i = new Intent(Intent.ACTION_MAIN)	// it's better to send the action as part of the Intent, 
+								// because some activity may bahave differently depending on different actions
+			.setClassName(activityInfo.applicationInfo.packageName,
+				activityInfo.name);
+
+		startActivity(i);
+
+9. tasks
+	A task is a stack of activities that the user is concerned with
+		Android uses tasks to keep track of the user’s state within each running application
+	Each application opened from Android’s default launcher app gets its own task
+		each time you press back button, the top activity is popped off from the stack
+		when the base activity is popped off, you will back to the last task. (maybe home screen)
+	by default, new activities are started in the current task, even if it's another app's activity
+		sometimes you'll want the new activity in another app to start in a new task
+			because in this way, you can switch between the new activity and the old one via switching between tasks in the task manager
+		to do this, you add a flag to the intent
+			Intent i = new Intent(Intent.ACTION_MAIN)
+			    .setClassName(activityInfo.applicationInfo.packageName,
+				    activityInfo.name)
+			    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			startActivity(i);
+		note that, the FLAG_ACTIVITY_NEW_TASK flag by itself creates one task per activity
+			if the task already exists, you'll switch to that task
+			
+10. use your own launcher as a home screen
+	add two categories to the intent-filter
+		<category android:name="android.intent.category.HOME" />
+		<category android:name="android.intent.category.DEFAULT" />
+	in this way, this activity will be offered as an option for Home screen
+	to clear the default choice off an action, 
+		you go to Settings->App, find the default app and then CLEAR DEFAULTS
+
+11. processes vs tasks
+	A process is a place created by the OS for your application’s objects to live and for your application to run
+		btw, On Android, your process will also always have exactly one virtual machine running
+		all the activities of the app, no matter how they were started, live in the same process
+			but can be in different tasks
+	assume that there are activity1 in app1 & process1, activity2 in app2 & process2, currently activity1 is in task1
+		activity1 starts activity2
+			if activity2 already exits in a task2
+				if FLAG_ACTIVITY_NEW_TASK
+					you'll switch to task2
+				if not FLAG_ACTIVITY_NEW_TASK
+					a new activity2 will be created in process2, and put into task1
+			if activity2 does not exist
+				if FLAG_ACTIVITY_NEW_TASK
+					new activity2 will be created, put into new task2
+				if not FLAG_ACTIVITY_NEW_TASK
+					new activity will be created, put into task1
+		launcher starts activity2 when there's an activity2 in task1
+			a new activity2 will be created in process2, and put into a new task2
+
