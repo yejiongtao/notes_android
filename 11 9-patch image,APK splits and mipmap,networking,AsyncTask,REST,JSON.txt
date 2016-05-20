@@ -1,0 +1,158 @@
+1. 9-patch images
+	when you use an image as the button's background
+		if the size of the button is greater than which of the drawable image, the image will be uniformly stretched
+			which may look bad sometimes
+	instead of uniformly stretching, you can specify which parts of the image to stretch, using 9-patch images
+	in a 3x3 grid
+		the 4 corners remain unscaled
+		4 sides are only scaled in one dimension
+		the center is scaled in both dimensions
+	to create 9-patch images
+		rename the png file to end with .9.png
+		double click the image to open Android Studio's 9-batch image editor
+		the black line on the left and the top edges indicate the stretchable area
+		the black line on the right and bottom edges indicate the area where the content(usually text) should be rendered
+			if not specified, it defaults to be the same as the stretchable area
+
+2. APK splits and mipmap images
+	you generate different sizes of the drawables to match different screen resolutions
+		but your app will be large in this way
+		to solve this, APK splits can be use
+	APK splits
+		generate separate APKs for each screen density
+		http://tools.android.com/tech-docs/new-build-system/user-guide/apk-splits
+	mipmap images
+		the needed size of the launcher icon does not only depend on the screen density, but the property of the launcher
+		mipmap images are not pruned from the APKs when APK splitting is enabled
+			otherwise, mipmaps are identical to drawables
+
+3. networking
+	code to fetch data
+		     public byte[] getUrlBytes(String urlSpec) throws IOException {
+			URL url = new URL(urlSpec);
+			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+
+			try {
+			    ByteArrayOutputStream out = new ByteArrayOutputStream();
+			    InputStream in = connection.getInputStream();
+
+			    if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+				throw new IOException(connection.getResponseMessage() +
+					": with " +
+					urlSpec);
+			    }
+
+			    int bytesRead = 0;
+			    byte[] buffer = new byte[1024];
+			    while ((bytesRead = in.read(buffer)) > 0) {		// why not use BufferedInputStream?
+				out.write(buffer, 0, bytesRead);
+			    }
+			    out.close();
+			    return out.toByteArray();
+			} finally {
+			    connection.disconnect();
+			}
+		    }
+
+		    public String getUrlString(String urlSpec) throws IOException {
+			return new String(getUrlBytes(urlSpec));
+		    }
+	ask permission to network
+		before Android 6.0 (Marshmallow), the only thing you can do it's to ask permissions before intallation
+			if permissions are not granted, then the app will not be installed
+				<manifest>
+
+				  <uses-permission android:name="android.permission.INTERNET" />
+				  <application>... </application>
+				</manifest>
+		with Marshmallow, you can ask permissions right before the first use of a resource
+			it's better to use the old behavior for those permissions you can not do without, 
+			but for less critical ones, the newer style of request is much kinder
+	
+4. android.os.AsyncTask
+	Android disallows all networking on the main thread, because networking can take so long
+		a NetworkOnMainThreadException will be thrown
+		the main thread is also called the UI thread
+			it updates the UI and takes care of the events
+			so if you have something that will take lots of time, use another thread
+	AsyncTask creates a background thread for you and runs the code in the doInBackground(…) method on that thread
+		extend AsyncTask, and override doInBackground()
+		call new MyAsyncTask().execute()
+	from AsyncTask back to the main thread
+		you are not allowed to update UI from a background thread, because the possibility of corrupting the objects in the memory
+		onPostExecute()
+			AsyncTask.onPostExecute() is run after doInBackground()
+			and it's run on the main thread! so it's safe to update the UI with it
+				private class FetchItemsTask extends AsyncTask<Void, Void, Void List<GalleryItem>> {	// note the third generic parameter
+					@Override
+					protected Void List<GalleryItem> doInBackground(Void... params) {	// returns a List
+
+					    return new FlickrFetchr().fetchItems();
+					}
+
+					@Override
+					protected void onPostExecute(List<GalleryItem> items) {			// uses the List returned by doInBackground()
+					    mItems = items;
+					    setupAdapter();
+					}
+				}
+	cleaning up AsyncTask
+		you should be careful dealing with thread
+			for example, when rotation happens, is there a new AsyncTask being created and get running?
+			maybe you can avoid this by retaining the fragment, but not always appropriate
+		to cancel a AsyncTask
+			hold its reference as a field
+			call AsyncTask.cancel(boolean)
+				cancel(true) will stop the AsyncTask immediately, which should be avoided if you can
+				cancel(false) just set isCancelled() to true
+					then you can check isCancelled() inside of doInBackground() and elect to finish
+			when and where should you cancel your AsyncTask
+				ask yourself whether the AsyncTask should be stopped if the fragment or activity is destroyed or goes out of view
+					if so, cancel it in onStop() or in onDestroy()
+				if you have importance task to maintain performing after the activity being destroyed
+					is's better to use Service, to avoid memory leaks, or accessing the UI when it's in an invalid state
+
+4.5 Fragment.isAdded()
+	checks if the fragment is attached to an activity
+	when you are using an AsyncTask, you are triggering some callbacks from a background thread
+		you cannot assume that the fragment is attached to an activity
+		so call isAdded() to check it before some behaviors
+			e.g. before adding an Adapter to the RecyclerView
+			because the adding is also called when the AsyncTask thread finishes fetching data
+				maybe a rotation just happens and the fragment haven't been attached to the activity yet
+		
+5. REST api
+	example
+	      public void fetchItems() {
+		  try {
+		      String url = Uri.parse("https://api.flickr.com/services/rest/")	// using a Uri.Builder to build the complete URL for the RESTful APi request
+			      .buildUpon()
+			      .appendQueryParameter("method", "flickr.photos.getRecent")	// these parameters depend on the API
+			      .appendQueryParameter("api_key", API_KEY)
+			      .appendQueryParameter("format", "json")
+			      .appendQueryParameter("nojsoncallback", "1")
+			      .appendQueryParameter("extras", "url_s")
+			      .build().toString();
+		      String jsonString = getUrlString(url);		// this is the method we wrote to fetch data from the url
+		      Log.i(TAG, "Received JSON: " + jsonString);
+		  } catch (IOException ioe) {
+		      Log.e(TAG, "Failed to fetch items", ioe);
+		  }
+	      }
+	
+
+6. JSON (JavaScript Object Notation)
+	Android includes the standard org.json package, which has classes that provide simple access to creating and parsing JSON text
+	json.org provides Java classes corresponding to JSON text, such as JSONObject and JSONArray
+	to parse
+		JSONObject jsonBody = new JSONObject(jsonString);		// get the top-level JSONObject that maps to the outermost curly braces in the original JSON text
+		
+		// get the object and array
+		JSONObject photosJsonObject = jsonBody.getJSONObject("photos");
+		JSONArray photoJsonArray = photosJsonObject.getJSONArray("photo");
+		
+		item.setId(photoJsonObject.getString("id"));			// get the value
+	Gson
+		a library to map JSON data to Java objects automatically, no parsing code needed
+such third party libraries can be directly add as dependency in Android Studio
+

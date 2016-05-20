@@ -1,0 +1,212 @@
+1. hierarchical navigation
+		using the back button is called temporal navigation, which takes you back to where you were last
+		hierachical navigation takes you up the app hierachy
+	after API 16 (Jelly Bean), it's easy to implement the up button
+		just add a parentActivityName attribute to the activity in manifest
+			android:parentActivityName=".CrimeListActivity"
+	navigating up will find the existing instance of the activity in the stack, and pop every other activity off the stack
+
+2. Toolbar vs Action Bar
+	besides visual differences, toolbar is more flexible in terms of :
+		instead of using a toolbar provided by one of the AppCompat themes, you can manually include a toolbar as a normal view in your activity or fragment's layout
+			so it can be placed anywhere you like
+			and you can have multiple toolbars on the screen at the same time
+		and toolbar can host Views
+			the height of the toolbar is adjustable
+
+3. plural string resources
+	You could have two different strings and determine which one to use in code, but this will quickly fall apart when you localize your app for different languages
+	a better option is to use plural string resources
+		define it in strings.xml
+			<plurals name="subtitle_plural">
+			    <item quantity="one">%1$s crime</item>
+			    <item quantity="other">%1$s crimes</item>
+			</plurals>
+		use it
+			R.plurals.subtitle_plural
+
+4. an alternative action item
+	set subtitle for the toolbar
+		AppCompatActivity activity = (AppCompatActivity) getActivity();
+		activity.getSupportActionBar().setSubtitle(subtitle);
+	toggling the action item title	--when clicked, change the title
+		option 1: you change the text in onOptionsItemSelected(MenuItem)
+			but the change will be lost as you rotate the device and the toolbar is recreated
+		option 2: keep the state of the item as a field
+			update the title based on the state in onCreateOptionsMenu(…)
+			call getActivity().invalidateOptionsMenu() to recreate the menu when the item is clicked
+		to let the state of item live across rotation, save it in onSaveInstanceState(Bundle)
+	an issue about up button
+		when up button pressed, the acticity you navigate up will be completely recreated from scratch
+			which means even the saved instance state will be lost
+			so if you want to save something about it, I think you should use singletons. not sure...
+	
+5. sandbox
+	Each application on an Android device has a directory in its sandbox. 
+		Keeping files in the sandbox protects them from being accessed by other applications or user not rooted
+	Each application’s sandbox directory is a child of the device’s /data/data directory named after the application package
+		/data/data/com.bignerdranch.android.criminalintent.
+
+6. object-relational mapping
+	implements the task that converts the object values into groups of simpler values for storage in the database
+		(and convert them back upon retrieval)
+	sounds like 'pickle' in Python
+
+7. SQLite	--here, we will take the simpler route of defining a simplified database schema in Java code, instead of using object-relational mapping
+		included in Android's standard library
+	define a schema for the database
+		public class CrimeDbSchema {
+		    public static final class CrimeTable {
+			public static final String NAME = "crimes";
+
+			public static final class Cols {
+			    public static final String UUID = "uuid";
+			    public static final String TITLE = "title";
+			    public static final String DATE = "date";
+			    public static final String SOLVED = "solved";
+			}
+		    }
+		}
+		in this way, you can access the table name by CrimeTable.NAME, and columns by CrimeTable.Cols.TITLE, in a Java-safe way
+			much safer if you want to change the schema
+	build a database
+		SQLiteOpenHelper helps to open or create a database
+			public class CrimeBaseHelper extends SQLiteOpenHelper {
+			    private static final int VERSION = 1;
+			    private static final String DATABASE_NAME = "crimeBase.db";
+
+			    public CrimeBaseHelper(Context context) {
+				super(context, DATABASE_NAME, null, VERSION);
+			    }
+
+			    @Override		// called if no database found in the file system
+						// put your code to create the initial database here
+			    public void onCreate(SQLiteDatabase db) {
+				db.execSQL("create table " + CrimeTable.NAME + "(" +
+					    " _id integer primary key autoincrement, " +
+					    CrimeTable.Cols.UUID + ", " +		// attention here! 
+					    CrimeTable.Cols.TITLE + ", " +		// SQLite does not require column data type! 
+					    CrimeTable.Cols.DATE + ", " +		// but you can also specify it
+					    CrimeTable.Cols.SOLVED +
+					    ")"
+				);
+			    }
+
+			    @Override		// called if the version of database in the file system is lower than which CrimeOpenHelper gets
+						// code to handle upgrages
+			    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+			    }
+			}
+		create a SQLiteOpenHelper to open database
+			mContext = context.getApplicationContext();
+			mDatabase = new CrimeBaseHelper(mContext)
+			      .getWritableDatabase();
+		attention! 
+			if you change the schema of the database, you have to upgrade the version, 
+				otherwise Helper will use the one it finds in the file system, which has the old schema
+			another option is to uninstall the app from the test device, in order to remove the old-version database
+	write to database
+		ContentValues	--a key-value store class
+			stores the kinds of data SQLite can hold
+			assists to write to and update the database
+		ususally, we write a method to convert an object into a ContentValues instance
+			private static ContentValues getContentValues(Crime crime) {
+				ContentValues values = new ContentValues();
+				values.put(CrimeTable.Cols.UUID, crime.getId().toString());
+				values.put(CrimeTable.Cols.TITLE, crime.getTitle());
+				values.put(CrimeTable.Cols.DATE, crime.getDate().getTime());
+				values.put(CrimeTable.Cols.SOLVED, crime.isSolved() ? 1 : 0);
+
+				return values;
+			}
+		mDatabase.insert(CrimeTable.NAME, null, values);
+			the second attribute is called nullColumnHack, no idea what it is 
+			the third one is the ContentValues instance
+		mDatabase.update(CrimeTable.NAME, values,
+		    CrimeTable.Cols.UUID + " = ?",	// use ? to avoid SQL injection attack
+		    new String[] { uuidString });
+	read from database
+		SQLiteDatabase.query(...)
+			public Cursor query(
+			    String table,
+			    String[] columns,
+			    String where,
+			    String[] whereArgs,
+			    String groupBy,
+			    String having,
+			    String orderBy,
+			    String limit)
+		Cursor and CursorWrapper
+			Cursor contains raw column values
+				to make use of the column values, you wrap it in a CursorWrapper
+			CursorWrapper has the functions of Cursor, and it allows you to write new methods to operate on the underlying Cursor
+				public class CrimeCursorWrapper extends CursorWrapper {
+				    public CrimeCursorWrapper(Cursor cursor) {
+					super(cursor);
+				    }
+
+				    public Crime getCrime() {	// a cursor is always pointing to a row
+					String uuidString = getString(getColumnIndex(CrimeTable.Cols.UUID));
+					String title = getString(getColumnIndex(CrimeTable.Cols.TITLE));
+					long date = getLong(getColumnIndex(CrimeTable.Cols.DATE));
+					int isSolved = getInt(getColumnIndex(CrimeTable.Cols.SOLVED));
+
+					Crime crime = new Crime(UUID.fromString(uuidString));
+					crime.setTitle(title);
+					crime.setDate(new Date(date));
+					crime.setSolved(isSolved != 0);
+
+					return crime;
+				    }
+				}
+		write a method to query and get the CursorWrapper
+			private CrimeCursorWrapper queryCrimes(String whereClause, String[] whereArgs) {
+			    Cursor cursor = mDatabase.query(
+				    CrimeTable.NAME,
+				    null, // Columns - null selects all columns
+				    whereClause,
+				    whereArgs,
+				    null, // groupBy
+				    null, // having
+				    null  // orderBy
+			    );
+			    return new CrimeCursorWrapper(cursor);
+			}
+		get the objects from CursorWrapper
+			    List<Crime> crimes = new ArrayList<>();
+			    CrimeCursorWrapper cursor = queryCrimes(null, null);	
+
+			    try {
+				cursor.moveToFirst();
+				while (!cursor.isAfterLast()) {	// this is how we make a traversal using cursor
+				    crimes.add(cursor.getCrime());
+				    cursor.moveToNext();
+				}
+			    } finally {
+				cursor.close();			// it's a good habit to close the cursor
+			    }
+			    return crimes;
+			
+8. package
+	when creating a new class, name it mypackage.MyClass
+		then it will be placed in the package
+
+9. Context
+		represents environment data, provides access to resources
+		lets the new guy know what has been going on here
+	Things that involve context are:
+		Loading a resource.
+		Launching a new activity.
+		Creating views.
+		obtaining system service.
+	Different invoking methods by which you can get context
+		getApplicationContext()
+		getContext()
+		getBaseContext()
+		or this (when in the activity class)
+	applicationContext vs context
+		in a singleton, if you store an activity as the context, it will never be cleaned up by the garbage collector
+			since a singleton lives for the whole lifetime of the app
+		so we should use the application context instead
+			because the Application object itself alse lives the whole time
+
