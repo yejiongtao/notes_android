@@ -1,32 +1,4 @@
-1. 9-patch images
-	when you use an image as the button's background
-		if the size of the button is greater than which of the drawable image, the image will be uniformly stretched
-			which may look bad sometimes
-	instead of uniformly stretching, you can specify which parts of the image to stretch, using 9-patch images
-	in a 3x3 grid
-		the 4 corners remain unscaled
-		4 sides are only scaled in one dimension
-		the center is scaled in both dimensions
-	to create 9-patch images
-		rename the png file to end with .9.png
-		double click the image to open Android Studio's 9-batch image editor
-		the black line on the left and the top edges indicate the stretchable area
-		the black line on the right and bottom edges indicate the area where the content(usually text) should be rendered
-			if not specified, it defaults to be the same as the stretchable area
-
-2. APK splits and mipmap images
-	you generate different sizes of the drawables to match different screen resolutions
-		but your app will be large in this way
-		to solve this, APK splits can be use
-	APK splits
-		generate separate APKs for each screen density
-		http://tools.android.com/tech-docs/new-build-system/user-guide/apk-splits
-	mipmap images
-		the needed size of the launcher icon does not only depend on the screen density, but the property of the launcher
-		mipmap images are not pruned from the APKs when APK splitting is enabled
-			otherwise, mipmaps are identical to drawables
-
-3. networking
+1. networking
 	code to fetch data
 		     public byte[] getUrlBytes(String urlSpec) throws IOException {
 			URL url = new URL(urlSpec);
@@ -69,7 +41,7 @@
 			it's better to use the old behavior for those permissions you can not do without, 
 			but for less critical ones, the newer style of request is much kinder
 	
-4. android.os.AsyncTask
+2. android.os.AsyncTask
 	Android disallows all networking on the main thread, because networking can take so long
 		a NetworkOnMainThreadException will be thrown
 		the main thread is also called the UI thread
@@ -112,7 +84,7 @@
 				if you have importance task to maintain performing after the activity being destroyed
 					is's better to use Service, to avoid memory leaks, or accessing the UI when it's in an invalid state
 
-4.5 Fragment.isAdded()
+3. Fragment.isAdded()
 	checks if the fragment is attached to an activity
 	when you are using an AsyncTask, you are triggering some callbacks from a background thread
 		you cannot assume that the fragment is attached to an activity
@@ -121,7 +93,7 @@
 			because the adding is also called when the AsyncTask thread finishes fetching data
 				maybe a rotation just happens and the fragment haven't been attached to the activity yet
 		
-5. REST api
+4. REST api
 	example
 	      public void fetchItems() {
 		  try {
@@ -141,7 +113,7 @@
 	      }
 	
 
-6. JSON (JavaScript Object Notation)
+5. JSON (JavaScript Object Notation)
 	Android includes the standard org.json package, which has classes that provide simple access to creating and parsing JSON text
 	json.org provides Java classes corresponding to JSON text, such as JSONObject and JSONArray
 	to parse
@@ -156,3 +128,33 @@
 		a library to map JSON data to Java objects automatically, no parsing code needed
 such third party libraries can be directly add as dependency in Android Studio
 
+
+6. more on AsyncTask
+	AsyncTask<Void,Void,Void>
+	parameters
+		the first one specifies the type of input parameters you will pass to the execute()
+			which are received by doInBackground(Void...)
+			a variable number of arguments
+				task.execute("First parameter", "Second parameter", "Etc.");
+		the second one specifies the type for sending progress updates
+			Progress updates usually happen in the middle of an ongoing background process
+			but you cannot make the necessary UI updates inside that background process
+			so you call publishProgress(...) from doInBackground()
+				which will invoke onProgressUpdate(Void...) and pass data to it
+				onProgressUpdate(Void...) is run on the UI thread, so you can override it to update UI
+		the third one specifies the return type of the doInBackground()
+			which receives by onPostExecute(Void...)
+
+7. alternative to AsyncTask: AsyncTaskLoader
+	if you use an AsyncTask to load data, you are responsible for managing its lifesycle
+		situations you have to consider:
+			configuration changes, such as rotation
+			user presses the back button
+			the fragment that launched the AsyncTask getting destroyed during execution by the OS due to a low-memory situation
+	using Loader can take some of this responsibility off your hands
+		a Loader loads data from some source, such as disk, database, ContentProvider, network, etc.
+	AsyncTaskLoader uses another thread, i.e., an AsyncTask to do the loading
+		during configuration changes, the LoaderManager will keep the loaders alive, along with their data
+		LoaderManager is responsible for starting, stopping, and maintaining the lifecycle of the Loaders
+		after configuration changes, if you initialize a loader that has already finished loading its data,
+			it can deliver that data immediately, instead of fetching it again
