@@ -179,4 +179,39 @@
 	actually, you can use custom serializer and deserializer to implement field naming
 		but you have to do both serializing and deserializing
 
+11. field exclusion
+two approaches:
+	configuring GsonBuilder
+		use GsonBuilder.excludeFieldsWithModifiers(int... modifiers)
+			to exclude those fields with the specified modifiers
+		Gson gson = new GsonBuilder().create();
+			by default, it omits static and transient fields while serializing
+		Gson gson = new GsonBuilder().excludeFieldsWithModifiers().create();
+			serializes all types of fields
+		Gson gson = new GsonBuilder().excludeFieldsWithModifiers(Modifier.STATIC).create();
+			omits static fields
+	using annotaions
+		use excludeFieldsWithoutExposeAnnotation()
+			to exclude those fields without @Expose annotation
+	user-defined field exclusion annotation
+		@Retention(RetentionPolicy.RUNTIME)
+		@Target({ ElementType.FIELD })
+		@interface MyExclude {
+		}
 
+		class CExclusionStrategy implements ExclusionStrategy{
+			private final Class<?> typeToExclude;
+
+			CustomExclusionStrategy(Class<?> typeToExclude) {
+				this.typeToExclude = typeToExclude;
+			}
+
+			public boolean shouldSkipClass(Class<?> classname) {
+				return (classname == typeToExclude);
+			}
+
+			public boolean shouldSkipField(FieldAttributes f) {
+				return f.getAnnotation(MyExclude.class) != null;
+			}
+		}
+		Gson gson = new GsonBuilder().setExclusionStrategies(new CustomExclusionStrategy(MyExclude.class)).create();
