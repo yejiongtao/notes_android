@@ -16,9 +16,30 @@
 3. downloading lots of small things
 	download them when they need to be displayed on screen
 		triggers the downloading in RecyclerView.onBindViewHolder()
+	AsyncTask is the easiest way to get a background thread, but it is ill-suited for repetitive and long-running work
+		because actually, starting with Android 3.2, it uses an Executor to run all the AsyncTasks on one single background thread
+			which means the AsyncTasks will run one after another
+	intead, commonly we create a dedicated background thread
+
+4. message loop
+	
 
 
+caching and preloading	--two measures to make your app seem faster
+	caching
+		room is limited, so you have to decide the strategy to use when room runs out, usually LRU, least recently used
+		LruCache is a class in Android support library
+	preloading
+		once you build a cache, you can preload things into it
+		e.g. preload the previous 10 and the next 10 pictures
 
+Picasso	--a third-party library for downloading, caching and transforming images
+	simple like this
+		Picasso.with(getActivity())
+                    .load(galleryItem.getUrl())
+                    .placeholder(R.drawable.bill_up_close)
+                    .into(mItemImageView);
+	
 
 
 

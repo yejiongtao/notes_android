@@ -1,0 +1,182 @@
+1. data exchange format
+	XML and JSON are the most preferred data formats in web application development
+	JSON is the most preferred for the data interchange format because of its following features:
+		Lightweight in footprints:
+			The size of a JSON response or file is much smaller than that of an XML one.
+		Native nature: 
+			All browsers have JavaScript as their native language and JSON follows the same object concept of JavaScript, which makes its rendering faster.
+		Simpler syntax: 
+			JSON has simpler syntaxes to represent data comprising curly braces and the key/value pairs separated by a colon. This makes the job of parsing easier.
+
+2. using GSON
+	JsonElement
+		Objects in GSON are referred as types of JsonElement
+		JsonElement has subclasses:
+			JsonPrimitive
+			JsonObject
+			JsonArray
+			JsonNull
+	fundemantal usage
+		Gson gson = new Gson();		// the Gson object does not maintain any stats, so it's reusable at multiple places
+						// another way to create a Gson object
+						// Gson gson = new GsonBuilder().create();
+		String jsonInteger = gson.toJson(new Integer(1));
+		Integer javaInteger = gson.fromJson(jsonInteger, Integer.class);
+						// use this two methods you can converts between any Java objects and Json objects
+						// toJsonTree() method serializes objects with their generic types
+
+3. serialization and deserialization
+	you can define a custom serializer
+		class StudentTypeSerializer implements JsonSerializer<Student>{
+			@Override
+			public JsonElement serialize(Student student, Type type,
+				JsonSerializationContext context) {
+
+				JsonObject obj = new JsonObject();	// JsonObject
+
+				obj.addProperty("studentname", student.getName());
+				obj.addProperty("subjecttaken", student.getSubject());
+
+				returnobj;
+			}
+		}
+	and a custom deserializer
+		class StudentTypeDeserializer implements JsonDeserializer<Student>{
+			@Override
+			public Student deserialize(JsonElement jsonelment, Type type,
+				JsonDeserializationContext context) throws JsonParseException {
+
+				JsonObject jsonObject = jsonelment.getAsJsonObject();	// because you know it is a JsonObject
+
+				Student aStudent = new Student();
+
+				aStudent.setName(jsonObject.get("studentname").getAsString());
+				aStudent.setSubject(jsonObject.get("subjecttaken").getAsString());
+
+				return aStudent;
+			}
+
+		}
+	register them to the GsonBuilder object
+		GsonBuilder builder = new GsonBuilder();
+		builder.registerTypeAdapter(C.class, new CSerializer());
+		builder.registerTypeAdapter(C.class, new CDeserializer());
+		Gson gson = builder.create();
+
+3. pretty printing
+	there are two formatter types present in GSON
+		JsonCompactFormatter
+			default. print in a line
+		JsonPrintFormatter
+			supports indentations and margins, which make it much prettier
+			but not exposed in API, so developers cannot change the format
+			can be set by calling a setPrettyPrinting() method on GsonBuilder
+
+4. nested classes
+	static nested class
+		for example
+			class C{
+				static class CC{}
+			}
+			C.CC cc = new C.CC()
+		GSON can serialize/deserialize a static nested class implicitly. No additional configuration is required
+			String jsonCC = gson.toJson(cc)
+	instance inner class
+		can be accessed only by an instance of the outer class
+			class C{
+				class CC()
+			}
+			C c = new C();
+			C.CC cc = c.new CC();
+		just serialize/deserialize in a common way
+			String jsonCC = gson.toJson(cc);
+			C.CC cc2 = gson.fromJson(jsonCC, C.CC.class);
+
+5. array
+	GSON supports the conversion of Java arrays to and from the JSON representation
+		String[] fruitsArray = {"apple", "oranges", "grapes"};
+		String jsonStringArray = gson.toJson(fruitsArray);
+			// the Json element will be ["apple", "oranges", "grapes"]
+		String[] array = gson.fromJson(jsonStringArray, String[].class);
+
+6. generic type
+	because of the type erasure freature of Java generic types, additional meausures should be taken when deserializing
+		C<Integer, String> c = new C<Integer, String>();
+		String jsonC = gson.toJson(c);
+			// com.google.gson.reflect.TypeToken
+		Type cType = new TypeToken<C<Integer, String>>(){}.getType();	// note that the TypeToke<..>() is not visible, you must create a anonymous inner class
+		C<Integer, String> c2 = gson.fromJson(jsonC, cType);
+
+7. null object
+	configure Gson object to let it serialize/deserialize null Java objects
+		Gson gson = new GsonBuilder().serializeNulls().setPrettyPrinting().create();
+	if you don't configure this,
+		when creating Json objects, fields with null value will be ignored and not added to Json objects
+	when deserializing, if a field is not presented in the Json object, it will be set to null
+
+8. versioning support
+	import com.google.gson.annotations.Since;
+	@Since(1.0)
+	class C{
+		int i;
+		@Since(1.1) int j;
+	}
+	Gson gson = new GsonBuilder().setVersion(1.0).create();
+	String json0 = gson.toJson(c);		// which will not include j field in the Json object
+	gson = new GsonBuilder().setVersion(1.1).create();
+	String json1 = gson.toJson(c);		// which will include j field
+
+9. no argument constructor
+	it's good to have a default no argument constructor of the Java class, 
+		because while deserializing, GSON creates a default instance of the class using its default constructor
+		and then reset the values of the fields according to the Json object
+	and in most cases, Gson is smart enough to create instances even if the Java class does not have a default no-argument constructor
+	however, in some cases, it cannot
+		class B{
+			private int i;
+			public B(int i){this.i = i;}
+		}
+		class A{
+			private B b;	// when you have a reference to B, and B does not have a default no-argument constructor
+					// a problem will be caused when deserializing to an A object
+		}
+	use InstanceCreator to fix this
+		class BInstanceCreator implements InstanceCreator<B>{
+			@Override
+			public B createInstance(Type type){
+				return new B(100);
+			}
+		}
+		Gson gson = new GsonBuilder().serializeNulls()
+			.registerTypeAdapter(Salary.class, new SalaryInstanceCreator())
+			.setPrettyPrinting().create();
+		System.out.println(gson.fromJson(jsonString, Employee.class));
+		// !!attention!! you create an InstanceCreator for class B!! not A!!
+
+10. field naming
+	built-in field naming
+		import com.google.gson.FieldNamingPolicy
+		import com.google.gson.annotations.SerializedName;
+		class C{
+			@SeriazlizedName("newName")
+			private String name;
+		}
+		Gson gson = new GsonBuilder()
+			.setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE).create();
+			// in this way, it create a field in Json named "newName" when serializing,
+			// and convert back to "name" when deserializing
+	user-defined field naming
+		class CFieldStrategy implements FieldNamingStrategy{
+			@Override
+			public String translateName(Field aField){
+				String name = aField.getName();
+				return name.toUpperCase();
+			}
+		}
+		Gson gson = new GsonBuilder()
+			.setFieldNamingStrategy(new CustomFieldStrategy())
+			.setPrettyPrinting().create();
+	actually, you can use custom serializer and deserializer to implement field naming
+		but you have to do both serializing and deserializing
+
+
