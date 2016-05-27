@@ -113,6 +113,10 @@
 	if you don't configure this,
 		when creating Json objects, fields with null value will be ignored and not added to Json objects
 	when deserializing, if a field is not presented in the Json object, it will be set to null
+	and!! if a field is null in json, you should do this to check
+		JsonElement element = object.get("attr");
+		if(element.isJsonNull())
+			//
 
 8. versioning support
 	import com.google.gson.annotations.Since;
