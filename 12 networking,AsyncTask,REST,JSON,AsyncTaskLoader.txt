@@ -104,7 +104,7 @@
 			      .appendQueryParameter("format", "json")
 			      .appendQueryParameter("nojsoncallback", "1")
 			      .appendQueryParameter("extras", "url_s")
-			      .build().toString();
+			      .build().toString();			// if you just build(), you will get a Uri object, upon which you can buildUpon() anytime
 		      String jsonString = getUrlString(url);		// this is the method we wrote to fetch data from the url
 		      Log.i(TAG, "Received JSON: " + jsonString);
 		  } catch (IOException ioe) {

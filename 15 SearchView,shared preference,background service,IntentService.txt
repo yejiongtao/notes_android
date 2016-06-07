@@ -1,0 +1,156 @@
+1. SearchView
+	SearchView is an action view – a view that may be included within the toolbar
+	to use SearchView
+		add a SearchView to the toolbar
+			make sure the toolbar appears
+			create a menu XML file
+				<menu xmlns:android="http://schemas.android.com/apk/res/android"
+				      xmlns:app="http://schemas.android.com/apk/res-auto">
+
+				    <item android:id="@+id/menu_item_search"
+					  android:title="@string/search"
+					  app:actionViewClass="android.support.v7.widget.SearchView"	// notice that this two attributes are also in namespace 'app'
+					  app:showAsAction="ifRoom" />
+
+				    <item android:id="@+id/menu_item_clear"		// this is for clear the search r
+					  android:title="@string/clear_search"		// because in this app, if you don't clear it, the search result will be reserved
+					  app:showAsAction="never" />			// even if you reboot your device
+											// we achieve this by Shared Preferences
+				</menu>
+
+			inflate the menu in the fragment
+				    @Override
+				    public void onCreate(Bundle savedInstanceState) {
+					...
+					setHasOptionsMenu(true);
+					...
+				    }
+				    @Override
+				    public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
+					super.onCreateOptionsMenu(menu, menuInflater);
+					menuInflater.inflate(R.menu.fragment_photo_gallery, menu);
+				    }
+
+		Responding to SearchView user interactions
+			the SearchView.OnQueryTextListener interface provides a way to receive a callback when a query is submitted
+				    @Override
+				    public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
+					super.onCreateOptionsMenu(menu, menuInflater);
+					menuInflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+					MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+					final SearchView searchView = (SearchView) searchItem.getActionView();	// get the SearchView from the menu
+
+					searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+					    @Override
+					    public boolean onQueryTextSubmit(String s) {
+						Log.d(TAG, "QueryTextSubmit: " + s);
+						updateItems();
+						return true;		// tells the system that the search request has been handled
+					    }
+
+					    @Override
+					    public boolean onQueryTextChange(String s) {
+						Log.d(TAG, "QueryTextChange: " + s);
+						return false;
+					    }
+					});
+				    }
+			that's it, you don't have to override onOptionsItemSelected(MenuItem item), it has been taken care of 
+		
+		to make it more polished
+			since the search result is reserved in this app, you should show the search string when user clicks the search icon
+				searchView.setOnSearchClickListener(new View.OnClickListener() {
+					  @Override
+					  public void onClick(View v) {
+					      String query = QueryPreferences.getStoredQuery(getActivity());
+					      searchView.setQuery(query, false);
+					  }
+				});
+
+			by default, when you submit a search, the searchView will be still expanded
+				to hide the keyboard and collapse the SearchView
+					you just call searchView.onActionViewCollapsed() inside onQueryTextSubmit(String s)
+						!!! because callback functions are merely simple functions!!!
+
+2. shared preference
+	files on your filesystem that you read and edit using the SharedPreferences class.
+		An instance of SharedPreferences acts like a key-value store
+			keys are Strings, values are atomic data types
+		stored in your application’s sandbox, so you should not store sensitive information (like passwords) there
+	save 
+		PreferenceManager.getDefaultSharedPreferences(context)
+		  .edit()
+		  .putString(PREF_SEARCH_QUERY, value)		// PREF_SEARCH_QUERY is a String key
+		  .apply();					// do all the changes at once
+	read
+		return PreferenceManager.getDefaultSharedPreferences(context)
+		  .getString(PREF_SEARCH_QUERY, null);		// the second parameter is the default value to use if there's no entry for the given key
+
+3. Background Services
+	in contrast to Activity
+		do something out of sight in the background
+		Service is a subclass of Context, just like Activity
+	IntentService
+		the most common kind of Service
+		responds to intents
+		when the first intent(we call it command) received, the IntentService starts up
+			fires up a background thread!!!
+			and deals with the arrived and incoming intents in sequence
+				when there are no commands left in the queue, the service stops and is destroyed
+4. use IntentService
+	subclass IntentService
+		public class PollService extends IntentService {
+		    private static final String TAG = "PollService";
+
+		    public static Intent newIntent(Context context) {	// for others to create an Intent
+			return new Intent(context, PollService.class);
+		    }
+
+		    public PollService() {	// must be public, even though you never use this constructor explicitly, 
+			super(TAG);		// Android will need a default constructor for Service and Activity
+		    }
+
+		    @Override
+		    protected void onHandleIntent(Intent intent) {	// deal with the arrived Intent
+			Log.i(TAG, "Received an intent: " + intent);
+		    }
+		}
+	
+	declare the Service in manifest
+		<application
+		      ... >
+		      ...
+		      <service android:name=".PollService" />
+		</application>
+
+	background networking
+		user can turn off networking for backgrounded applications
+			so when running a service in the background needs network, you should check if the network is available
+		use ConnectivityManager
+			private boolean isNetworkAvailableAndConnected() {
+				ConnectivityManager cm =
+					(ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+
+				boolean isNetworkAvailable = cm.getActiveNetworkInfo() != null;		// null if background networking is turned off
+				boolean isNetworkConnected = isNetworkAvailable &&
+					cm.getActiveNetworkInfo().isConnected();
+
+				return isNetworkConnected;
+			}
+		check it before dealing with the Intents
+			 @Override
+			 protected void onHandleIntent(Intent intent) {
+				if (!isNetworkAvailableAndConnected()) {
+				    return;
+				}
+
+				Log.i(TAG, "Received an intent: " + intent);
+			 }
+		to use getActiveNetworkInfo(), you need to acquire the ACCESS_NETWORK_STATE permission
+			<manifest ...>
+				<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+	schedule execution with AlarmManager
+		// TO BE CONTINUED
+		
