@@ -1,0 +1,133 @@
+1. RecyclerView.onScrollListener
+	can detect when you are at the end of the results
+	and then you can add new results to it
+
+2. dynamically adjust the number of columns of the RecyclerView
+	one way to do this is create an integer resource with a orientation qualifier
+		Integer resources should be placed in res/values
+		but the number of columns are actually hard-coded in this way
+	another approach is to calculate the number in your code 
+		based on the width of the RecyclerView and a predetermined constant column width
+		you cannot calculate the number of columns in onCreateView() because the RecyclerView will not be sized yet
+			implement a ViewTreeObserver.OnGlobalLayoutListener
+			put your column calculation code in onGlobalLayout()
+			Add the listener to your RecyclerView using addOnGlobalLayoutListener().
+
+3. downloading lots of small things
+	download them when they need to be displayed on screen
+		triggers the downloading in RecyclerView.onBindViewHolder()
+	AsyncTask is the easiest way to get a background thread, but it is ill-suited for repetitive and long-running work
+		because actually, starting with Android 3.2, it uses an Executor to run all the AsyncTasks on one single background thread
+			which means the AsyncTasks will run one after another
+	intead, commonly we create a dedicated background thread
+
+4. using message loops to communicate between threads
+	a special kind of thread, which has a Looper to manage the message queue
+		you can create and delegate Handlers to the Looper, to handle messages
+		a Message should be attached to a Handler
+	when a message is sent to a another thread
+		it is added to the message queue
+		the thread will deal with it when it has hands
+		so the sender does not have to wait for the receiver
+	the main thread is a message looper
+	you can subclass HandlerThread to create your own thread with a Looper
+
+5. to use message loop
+	subclass HandlerThread, (here, we call the subclass MyHandlerThread)
+		the run() function is taken care of
+
+	create a Handler in MyHanderThread, override handleMessage()
+		usually in onLooperPrepared()
+		the Handler instance will be attached to the thread where it is created
+		you can create multiple handlers to handle different kinds of messages
+		code
+			@Override
+			protected void onLooperPrepared() {
+				mRequestHandler = new Handler() {
+				    @Override
+				    public void handleMessage(Message msg) {
+					if (msg.what == MESSAGE_DOWNLOAD) {	// a custom constant 
+					    // do things
+					}
+				    }
+				};
+			}
+
+	create a MyHandlerThread instance in another thread(here, main thread), start it
+			mHandlerThread = new MyHandlerThread();
+			mHandlerThread.start();
+			mHandherThread.getLooper();
+				// call it explicitly, because until you call it, there's no guarantee that onLooperPrepared() has been called
+				// and you will need to do init things in onLooperPrepared(), such as creating Handlers
+		remember to call HandlerThread.quit() in onDestroy()
+
+	create a method in MyHandlerThread to construct and send messages to the Handler, 
+		and call it in an appropriate place in the main thread
+			(you can construct and send messages in the main thread as well, but letting the HandlerThread do it is more reasonable)
+
+		mRequestHandler.obtainMessage(MESSAGE_DOWNLOAD, object)
+                    .sendToTarget();
+			// use Handler.obtainMessage() to construct a Message and attach it to the Handler
+			// it pulls from a common recycling pool to avoid creating new Message objects
+			// call sendToTarget() to send the Message to its Handler
+
+		three of the things containing in a message
+			what	a user-defined int that describes the message
+			obj	a user-specified object to be sent with the message
+			target	the Handler that will handle the message
+	
+	done.
+	then you can send message back to the main thread in the same way, since main thread is already a message loop
+	another way to send a message back to the main thread
+		in MyHandlerThread
+			mResponseHandler.post(new Runnable() {		// mResponseHandler is created in the main thread
+				public void run() {
+				    // do things 
+				    // you can call the main thread's method here
+				}
+			});
+		when a message has a callback function(i.e., run() in the Runnable), 
+			when pulled off the message queue, run() method will be executed, instead of handleMessage()
+			since the Runnable is in MyHandlerThread, there's no need to explicitly send a message, 
+				instead, you just call a method of the main thread and pass things as parameters
+		usually, we use define the callback function in the main thread as an interface
+			in MyHandlerThread
+				private ThumbnailDownloadListener<T> mThumbnailDownloadListener;
+
+				public interface ThumbnailDownloadListener<T> {
+					void onThumbnailDownloaded(T target, Bitmap thumbnail);
+				}
+				public void setThumbnailDownloadListener(ThumbnailDownloadListener<T> listener) {
+					mThumbnailDownloadListener = listener;
+				}
+			in main thread
+				mThumbnailDownloader.setThumbnailDownloadListener(
+					new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
+					    @Override
+					    public void onThumbnailDownloaded(PhotoHolder photoHolder, Bitmap bitmap) {
+						// do things
+					    }
+					}
+				);
+	
+	cleaning up
+			public void clearQueue() {
+				mRequestHandler.removeMessages(MESSAGE_DOWNLOAD);
+			}
+		call it in onDestroyView() or anywhere approprate
+
+6. caching and preloading	--two measures to make your app seem faster
+	caching
+		room is limited, so you have to decide the strategy to use when room runs out, usually LRU, least recently used
+		LruCache is a class in Android support library
+	preloading
+		once you build a cache, you can preload things into it
+		e.g. preload the previous 10 and the next 10 pictures
+
+7. Picasso	--a third-party library for downloading, caching and transforming images
+	simple like this
+		Picasso.with(getActivity())
+                    .load(galleryItem.getUrl())
+                    .placeholder(R.drawable.bill_up_close)
+                    .into(mItemImageView);
+	
