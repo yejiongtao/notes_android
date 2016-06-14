@@ -1,0 +1,143 @@
+1. introduction of streaming media
+	a way of playing files as they download
+	traditional downloading vs. streaming
+		quality
+			downloading
+				uses TCP/IP, which corrects errors, retransfers lost or damaged packets
+			streaming
+				packet losses are ignored
+				 Any packets lost during streaming simply add "surface noise" to an audio stream or degrade the picture quality of a video
+		servers
+			downloading
+				works through HTTP or FTP with any conventional web server
+				the same version of each file is served to everyone
+			streaming
+				uses RTSP(real-time streaming protocol) and needs to run on a server specially geared for streaming
+				there are typically different versions of each file that optimized for different connection speeds
+		encoding/decoding
+			downloading
+				files can be instantly uploaded to a server for immediate downloading
+			streaming
+				Files have to be compressed and then encoded (turned into discrete, digital packets) before they can be streamed
+				appropriate decoding files(known as codecs) are required for turning encoded, computerized, digital files back into analog sounds and pictures
+					so a plugin in the web-browser is needed
+		multiple users
+			downloading	
+				the more people downloading a file at the same time, the harder the server has to work
+				(BitTorrent protocol solved this problem via peer-to-peer)
+			streaming
+				unicasting
+					each client takes a separate stream from the server
+					because different people will start streaming the same video or audio program at different times
+				multicasting
+					produce a single stream that many people can watch or listen to simultaneously
+					(for example, live show)
+	VLC (VideoLAN)
+		an open-source project that can be streaming media server
+
+	pseudo-streaming: progressive downloading
+		can be installed on regular HTTP servers
+		is like a cross between conventional downloading and streaming
+		A large chunk (and sometimes all) of the file you're watching downloads into your web browser's cache and your browser plays it simultaneously
+			Unlike with a truly streamed video, you can't always skip forward: generally you have to wait for the file to download to the point you want to see
+			the file remains in your browser cache even when you've finished watching
+				with streaming, parts that already played will be deleted to make way for the next part
+			two seperate indicators on the progress bar
+		YouTube and many video websites use this
+
+		FlowPlayer
+			a plugin for web-browsers that can implement progressive downloading easily
+				http://flash.flowplayer.org/plugins/streaming/pseudostreaming.html
+			no special servers needed
+				but you have to prepare your video files for pseudostreaming
+
+2. VideoView
+	once you have the streaming video server up and running, you can play video in your app
+		actually you can create an implicit intent to start a video player
+			String videoUrl = "insert url to video here";
+			Intent i = new Intent(Intent.ACTION_VIEW);
+			i.setData(Uri.parse(videoUrl));
+			startActivity(i);
+	VideoView vs. MediaPlayer
+		VideoView is a wrapper for MediaPlayer and SurfaceView to provide easier controls of videos
+			if you don't need much custom functions, VideoView is good enough
+		
+	to use VideoView
+		add a <VideoView> in the layout
+		inside onCreate() of the activity
+			// set the media controller buttons
+			if (mediaControls == null) {
+			    mediaControls = new MediaController(AndroidVideoViewExample.this);
+			}
+		 
+			// initialize the VideoView
+			myVideoView = (VideoView) findViewById(R.id.video_view);
+		 
+			// create a progress bar while the video file is loading
+			progressDialog = new ProgressDialog(AndroidVideoViewExample.this);
+			// set a title for the progress bar
+			progressDialog.setTitle("JavaCodeGeeks Android Video View Example");
+			// set a message for the progress bar
+			progressDialog.setMessage("Loading...");
+			// set the progress bar not cancelable on users' touch
+			progressDialog.setCancelable(false);
+			// show the progress bar
+			progressDialog.show();
+		 
+			try {
+			    // set the media controller in the VideoView
+			    myVideoView.setMediaController(mediaControls);
+		 
+			    // set the uri of the video to be played
+			    myVideoView.setVideoURI(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.kitkat));
+		 
+			} catch (Exception e) {
+			    Log.e("Error", e.getMessage());
+			    e.printStackTrace();
+			}
+		 
+			myVideoView.requestFocus();
+			// we also set an setOnPreparedListener in order to know when the video file is ready for playback
+			myVideoView.setOnPreparedListener(new OnPreparedListener() {
+		       
+			    public void onPrepared(MediaPlayer mediaPlayer) {
+				// close the progress bar and play the video
+				progressDialog.dismiss();
+				//if we have a position on savedInstanceState, the video playback should start from here
+				myVideoView.seekTo(position);
+				if (position == 0) {
+				    myVideoView.start();
+				} else {
+				    //if we come from a resumed activity, video playback will be paused
+				    myVideoView.pause();
+				}
+			    }
+			});
+		
+		you should take care of the state changes
+			@Override
+			public void onSaveInstanceState(Bundle savedInstanceState) {
+				super.onSaveInstanceState(savedInstanceState);
+
+				//we use onSaveInstanceState in order to store the video playback position for orientation change
+				savedInstanceState.putInt("Position", myVideoView.getCurrentPosition());
+				myVideoView.pause();
+			}
+
+			@Override
+			public void onRestoreInstanceState(Bundle savedInstanceState) {
+				super.onRestoreInstanceState(savedInstanceState);
+
+				//we use onRestoreInstanceState in order to play the video playback from the stored position 
+				position = savedInstanceState.getInt("Position");
+				myVideoView.seekTo(position);
+			}
+
+
+
+
+
+
+
+
+

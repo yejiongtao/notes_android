@@ -1,0 +1,136 @@
+1. IntentService (part 2)
+	schedule execution with AlarmManager
+		AlarmManager is a system service that can send Intents for you
+			use PendingIntent to tell AlarmManager what Intents to send
+
+		to turn the alarm on an off
+			public static void setServiceAlarm(Context context, boolean isOn) {
+				Intent i = PollService.newIntent(context);
+				PendingIntent pi = PendingIntent.getService(context, 0, i, 0);
+					// getService() packages up an invocation of Context.startService(Intent)
+					// parameters for getService
+						// a Context with which to send the intent
+						// a request code you can use to distinguish the PendingIntent
+						// the Intent object to send
+						// a set of flags about how the PendingIntent is created
+
+				AlarmManager alarmManager = (AlarmManager)
+					context.getSystemService(Context.ALARM_SERVICE);
+
+				if (isOn) {
+				    alarmManager.setInexactRepeating(AlarmManager.ELAPSED_REALTIME,
+					    SystemClock.elapsedRealtime(), POLL_INTERVAL, pi);
+					// parameters
+						// a constant to describe the time basis for the alarm
+						// the time at which to start the alarm
+						// the time interval at which to repeat the alarm
+						// a PendingIntent to fire when the alarm goes off
+
+				} else {
+				    alarmManager.cancel(pi);
+				    pi.cancel();
+				}
+			}
+			// on Android 5.1, the minimum interval allowed is 60 seconds
+		
+		more about alarms
+			be a good citizen, use alarms only if neccesary
+				Repeatedly executing work from your background service has the potential to eat up the user’s battery power and data service allotment
+				waking the device from sleep (when the screen was off) is a costly operation
+			
+			AlarmManager.setRepeating(…) and AlarmManager.setInexactRepeating(…)
+				starting with API 19 (4.4), both the methods repeat the alarm in an inexact fashion
+					means your alarm will not occur at the exact interval you specify
+					allows the system to batch your alarm with others and minimize the amount of wake time needed
+				you can use AlarmManager.setWindow() or AlarmManager.setExact() to set and exact alarm to occur only once
+			
+			time basis options
+				AlarmManager.ELAPSED_REALTIME
+					triggers the alarm to go off when the specified amount of time has passed
+					recommended
+				AlarmManager.RTC
+					triggers the alarm to go off at a fixed point in time
+					you must implement your own locale handling in conjunction with using the RTC time basis
+				AlarmManager.ELAPSED_REALTIME_WAKEUP and AlarmManager.RTC_WAKEUP
+					the ELAPSED_REALTIME and RTC will not fire the alarm if the device is in sleep mode (the screen is turned off)
+
+		more about PendingIntent
+				packages up the Intent to send
+					and it will send it on your behalf
+			to tell if the alarm is on
+				only one alarm can be registered for each PendingIntent
+					and when the alarm is canceled, the PendingIntent will be cleaned up
+					so you can check the PendingIntent to tell if the alarm is on
+				code
+					public static boolean isServiceAlarmOn(Context context) {
+						Intent i = PollService.newIntent(context);
+						PendingIntent pi = PendingIntent
+							.getService(context, 0, i, PendingIntent.FLAG_NO_CREATE);	
+
+							// returns the existed PendingIntent with the request code
+							// by default, if the PendingIntent with the given request code is not found, a new one will be created
+							// FLAG_NO_CREATE tells it not to create new instance, instead, return null
+
+						return pi != null;
+					}
+
+	Notifications
+		minimum components
+			ticker text	display in the status bar when the notification is first shown on pre-Lollipop devices
+			icon
+			view		show in the notification drawer to represent the notification itself
+					you can define your own view, or just use the default one
+			PendingIntent	to fire when the user presses the notification in the drawer
+
+		usually we launch the activity when user press the notification
+			in the activity
+				public static Intent newIntent(Context context) {
+					return new Intent(context, PhotoGalleryActivity.class);
+				}
+			
+		fire the notification in onHandleIntent
+			Resources resources = getResources();			// this is how we use resoures! R.string.title is just an ID
+			Intent i = PhotoGalleryActivity.newIntent(this);
+			PendingIntent pi = PendingIntent.getActivity(this, 0, i, 0);	// intead of getService
+
+			Notification notification = new NotificationCompat.Builder(this)
+				.setTicker(resources.getString(R.string.new_pictures_title))
+				.setSmallIcon(android.R.drawable.ic_menu_report_image)
+				.setContentTitle(resources.getString(R.string.new_pictures_title))
+				.setContentText(resources.getString(R.string.new_pictures_text))
+				.setContentIntent(pi)
+				.setAutoCancel(true)		// delete from the notification drawer when the user presses it
+				.build();
+
+			NotificationManagerCompat notificationManager =
+				NotificationManagerCompat.from(this);
+			notificationManager.notify(0, notification);	// the first parameter is ID of the notification
+				// it will replace the last notification with the same ID
+				// with the same ID, you can implement a progress bar of other dynamic visuals
+
+		notifications on Android Wear
+			since you use NotificationCompat and NotificationManagerCompat
+				your notifications will automatically appear on an Android Wear device if paired 
+			user can issue the notification's pending intent on the connected handheld device via the notification on Android Wear
+
+2. common Service
+	IntentService does things on a background thread
+		but common Service runs on the main thread
+	life cycle
+		onCreate()
+		onStartCommand(Intent, int, int)
+		onDestroy()
+	types of Services
+		non-sticky
+			IntentService is non-sticky
+			the Service tells the system when it's done
+				for IntentService, it's done when done dealing with the arrived Intent
+		sticky
+			stays started until something outside the service tells it to stop
+			appropriate for a long-running service, like a music player
+	bound service
+			you can bind service in order to access methods on the service
+		local service binding
+		remote service binding
+			give applications in other processes the ability to invoke methods on your service
+	

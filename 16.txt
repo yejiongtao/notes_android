@@ -1,4 +1,0 @@
-1. IntentService (part 2)
-	schedule execution with AlarmManager
-		AlarmManager is a system service that can send Intents for you
-			use PendingIntent to tell AlarmManager what Intents to send

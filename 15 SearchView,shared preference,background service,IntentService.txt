@@ -93,7 +93,7 @@
 		Service is a subclass of Context, just like Activity
 	IntentService
 		the most common kind of Service
-		responds to intents
+			responds to intents
 		when the first intent(we call it command) received, the IntentService starts up
 			fires up a background thread!!!
 			and deals with the arrived and incoming intents in sequence
@@ -152,5 +152,10 @@
 				<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
 	schedule execution with AlarmManager
+		you can start a service explicitly by 
+			getActivity().startService(PollService.newInstance(getActivity()));
+		but in this way, when things inside onHandleIntent(Intent) is done, the Service is done, since there's only one Intent sent to it
+			we need something to send the Intent periodically, for example, every ten minutes
+			that's when AlarmManager shines
 		// TO BE CONTINUED
 		
