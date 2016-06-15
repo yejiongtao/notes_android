@@ -1,0 +1,89 @@
+1. receivers and long-running tasks
+	two ways for a broadcast intent to kick off a long-running task
+		put the work in a service, and start the service in the receiver
+			a service can take as long as you want
+			recommended
+		
+		use the BroadcastReceiver.goAsync() method
+			keeps the broadcast active after returning from that function. 
+				This does not change the expectation of being relatively responsive to the broadcast (finishing it within 10s), but does allow the implementation to move work related to it over to another thread to avoid glitching the main UI thread due to disk IO.
+			returns a BroadcastReceiver.PendingResult object, which can be used to provide a result at a later time. 
+				So you could give that PendingResult to an AsyncTask to perform some longer running work, and then respond to the broadcast by calling methods on PendingResult.
+
+2. local events
+	why?
+		to broadcast the occurrence of an event within your app’s process only
+		When an event is posted to the bus, subscribed components will be activated and have their callback code executed
+	how?
+		third-party library such as EventBus by greenrobot, Square’s Otto, or using RxJava Subjects and Observables to simulate an event bus
+			flexible and easy-to-use
+		use Android's LocalBroadcastManager to send local broadcast intents
+
+	using EventBus
+		add a library dependency
+		define a class representing the event
+			you can add any field to it
+				public class NewFriendAddedEvent { }
+
+		post to the bus from just about anywhere in your app
+			EventBus eventBus = EventBus.getDefault();
+			eventBus.post(new NewFriendAddedEvent());
+
+		register and unregister, often in onStart() and onStop()
+			// In some fragment or activity...
+			private EventBus mEventBus;
+
+			@Override
+			public void onCreate(Bundle savedInstanceState) {
+			    super.onCreate(savedInstanceState);
+			    mEventBus = EventBus.getDefault();
+			}
+
+			@Override
+			public void onStart() {
+			    super.onStart();
+			    mEventBus.register(this);
+			}
+
+			@Override
+			public void onStop() {
+			    super.onStop();
+			    mEventBus.unregister(this);
+			}
+		
+		specify what the subscriber should do by implementing an onEvent(…) or onEventMainThread(…) with the appropriate event type as input
+			Using onEvent(…) means the event will be processed on the same thread it was sent from
+			use onEventMainThread(…) to ensure the event is processed on the main thread if necessary
+				// In some registered component, like a fragment or activity...
+				public void onEventMainThread(NewFriendAddedEvent event){
+				    Friend newFriend = event.getFriend();
+				    // Update the UI or do something in response to event...
+				}
+
+	using RXJava
+		RXJava
+			Reactive-extension of Java
+			allows you to publish and subscribe to sequences of events and gives you a broad set of generic tools for manipulating these event sequences
+
+		how
+			create a Subject, which is an object you can publish events to as well as subscribe to events on
+				Subject<Object, Object> eventBus = new SerializedSubject<>(PublishSubject.create());
+
+			publish events to it
+				NewFriendAddedEvent event = new NewFriendAddedEvent(someNewFriend);
+				eventBus.onNext(event);
+
+			subscribe to events on it
+				eventBus.subscribe(new Action1<Object>() {
+				    @Override
+				    public void call(Object event) {
+					if (event instanceof NewFriendAddedEvent) {
+					    Friend newFriend = ((NewFriendAddedEvent)event).getFriend();
+					    // Update the UI
+					}
+				    }
+				})
+		
+		you can use RxJava’s various event manipulation tools to the Subject
+
+		
