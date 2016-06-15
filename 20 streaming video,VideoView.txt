@@ -51,7 +51,12 @@
 			no special servers needed
 				but you have to prepare your video files for pseudostreaming
 
-2. VideoView
+2. another way for displaying videos
+	use <video> tag in html5
+		and use some javascript for the play/pause button
+	simple as this
+
+3. VideoView
 	once you have the streaming video server up and running, you can play video in your app
 		actually you can create an implicit intent to start a video player
 			String videoUrl = "insert url to video here";
@@ -132,12 +137,5 @@
 				position = savedInstanceState.getInt("Position");
 				myVideoView.seekTo(position);
 			}
-
-
-
-
-
-
-
 
 
