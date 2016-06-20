@@ -34,7 +34,7 @@ android:text="@string/question_text"
 	the resource ID of a string: R.string.string_name
 	widgets that are not layouts do not have a resource ID, but if the widget needs to be refer to in the code, we can create one for it in the xml file:
 		android:id="@+id/true_button"
-		(actually, Android only creates ids for the whole xml file, layouts inside a View has no auto-created ids)
+		(Android only creates ids for the whole xml file, layouts inside a View has no auto-created ids)
 	@  means referencing
 	@+  means creating
 

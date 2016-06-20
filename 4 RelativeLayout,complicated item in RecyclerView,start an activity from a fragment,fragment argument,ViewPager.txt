@@ -1,6 +1,6 @@
 1. RelativeLayout
 	use layout parameters to arrange child views relative to the root layout and to each other
-	<RelativeLayout>						//obmit some irrelevant attributes
+	<RelativeLayout>						//omit some irrelevant attributes
 	    <CheckBox
 		android:id="@+id/list_item_crime_solved_check_box"	 
 		android:layout_alignParentRight="true"/>		//align itself to the right-hand side of the RelativeLayout
@@ -93,13 +93,12 @@
 	but a fragment cannot have its own result, instead, you tell the host activity to return a value
 		getActivity().setResult(Activity.RESULT_OK, null);
 
-10. ViewPager --lets users navigate between list items by swiping across the screen
+10. ViewPager --let users navigate between list items by swiping across the screen
 	is like RecyclerView in some ways
 		but only available in support library
 	needs PagerAdapter
 		use FragmentStatePagerAdapter, a subclass of PagerAdapter, to simplify conversations with ViewPager
-	the hierachy
-		
+
 	using ViewPager:
 		add a ViewPager to the layout xml file
 		get it in the fragment ( or Activity if not using fragment)

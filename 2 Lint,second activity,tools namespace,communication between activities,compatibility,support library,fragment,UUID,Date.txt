@@ -20,7 +20,7 @@
 			otherwise you have to declare it yourself
 			sometimes you have to change the launcher activity if you need it 
 	start an activity
-		startActivity(new Intent(QuizActivity.this, CheatActivity.class))
+		startActivity(new Intent(QuizActivity.this, CheatActivity.class))	// Context and to-be-started class
 	Intent --a multi-purpose communication tool, has various constructors for the use of different purposes
 		Intent(Context, Class<?>)
 			Context tells that which application package the activity class can be found, and the class is of the Activity to start
@@ -45,7 +45,7 @@
 			i.putExtra(EXTRA_ANSWER_IS_TRUE, answerIsTrue);
 			return i;
 		}
-		instead of do the work in the calling Activity, in this way, if there are many activities, it will be more clear that what extras are passed to them
+		instead of doing the work in the calling Activity, in this way, if there are many activities, it will be more clear that what extras are passed to them
 	putExtra() takes a String key, and a value of different kind
 		returns the Intent itself, so if nessecary, can use this way: i.putExtra().putExtra()
 	usually we use packet name as prefix of the key, to avoid name collision with extras in other apps. because we have only one activity manager

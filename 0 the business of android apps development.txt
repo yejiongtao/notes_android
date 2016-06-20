@@ -1,0 +1,14 @@
+1. Andoid vs. ios
+	Android has no approval process when it comes to uploading and publishing apps
+	ios only runs on iphone
+		Android runs on various kinds of mobile phones, so concerns for different devices should be considered
+
+2. if you can afford it, is to use a service like www.perfectomobile.com
+	which allows you to test against hundreds of real Android phones using a cloud-based interface
+
+
+
+
+
+
+

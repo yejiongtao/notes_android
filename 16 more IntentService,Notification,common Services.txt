@@ -23,7 +23,7 @@
 					// parameters
 						// a constant to describe the time basis for the alarm
 						// the time at which to start the alarm
-						// the time interval at which to repeat the alarm
+						// the time interval at which to repeat the alarm, milisecond
 						// a PendingIntent to fire when the alarm goes off
 
 				} else {
@@ -75,7 +75,7 @@
 					}
 
 	Notifications
-		minimum components
+		minimum components	// you have to have all of these elements to make it work
 			ticker text	display in the status bar when the notification is first shown on pre-Lollipop devices
 			icon
 			view		show in the notification drawer to represent the notification itself
@@ -133,4 +133,3 @@
 		local service binding
 		remote service binding
 			give applications in other processes the ability to invoke methods on your service
-	
