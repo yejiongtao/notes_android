@@ -1,4 +1,48 @@
-1.
+1. Property Animation --animation via changing properties of Views
+	draw the scene
+	create property animators
+		private void startAnimation() {
+			float sunYStart = mSunView.getTop();
+			float sunYEnd = mSkyView.getHeight();
+			// getTop(), getBottom(), getLeft() and getRight() get the relative location of the view in relation to its parent
+			// getHeight(), getWidth()
+
+			ObjectAnimator heightAnimator = ObjectAnimator		// ObjectAnimator is a property animator
+				.ofFloat(mSunView, "y", sunYStart, sunYEnd)	// "y" is a property, it can be any property of a View
+				.setDuration(3000);
+			heightAnimator.setInterpolator(new BounceInterpolator());	// set a TimeInterpolator
+
+			...
+
+			ObjectAnimator nightSkyAnimator = ObjectAnimator		// int mSunsetSkyColor = getResources.getColor(R.color.sunset_sky);
+				.ofInt(mSkyView, "backgroundColor", mSunsetSkyColor, mNightSkyColor)
+				.setDuration(1500);
+			nightSkyAnimator.setEvaluator(new ArgbEvaluator());		// to evaluate ARGB colors
+
+			AnimatorSet animatorSet = new AnimatorSet();			// to schedule multiple Animators
+			animatorSet							// if not necessary, you can just start an Animator
+				.play(heightAnimator)
+				.with(sunsetSkyAnimator)
+				.before(nightSkyAnimator);
+			animatorSet.start();
+		}
+
+	View transformation properties
+		three properties to rotate the view (rotation, pivotX, and pivotY)
+		two properties to scale the view vertically and horizontally (scaleX and scaleY)
+		two to move the view around the screen (translationX and translationY)
+			all these properties have getters and setters
+	
+	subclasses of TimeInterpolator
+		AccelerateInterpolator			An interpolator where the rate of change starts out slowly and and then accelerates. 
+		DecelerateInterpolator			An interpolator where the rate of change starts out quickly and and then decelerates. 
+		AccelerateDecelerateInterpolator	An interpolator where the rate of change starts and ends slowly but accelerates through the middle. 
+		AnticipateInterpolator			An interpolator where the change starts backward then flings forward. 
+		OvershootInterpolator			An interpolator where the change flings forward and overshoots the last value then comes back. 
+		AnticipateOvershootInterpolator		An interpolator where the change starts backward then flings forward and overshoots the target value and finally goes back to the final value. 
+		BounceInterpolator			An interpolator where the change bounces at the end. 
+		CycleInterpolator			Repeats the animation for a specified number of cycles. 
+		LinearInterpolator			An interpolator where the rate of change is constant  
 
 
 
