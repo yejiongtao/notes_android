@@ -6,9 +6,3 @@
 2. if you can afford it, is to use a service like www.perfectomobile.com
 	which allows you to test against hundreds of real Android phones using a cloud-based interface
 
-
-
-
-
-
-

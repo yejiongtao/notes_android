@@ -1,4 +1,5 @@
 1. Property Animation --animation via changing properties of Views
+		just change the properties of a View and then redraw the scene
 	draw the scene
 	create property animators
 		private void startAnimation() {
@@ -10,6 +11,7 @@
 			ObjectAnimator heightAnimator = ObjectAnimator		// ObjectAnimator is a property animator
 				.ofFloat(mSunView, "y", sunYStart, sunYEnd)	// "y" is a property, it can be any property of a View
 				.setDuration(3000);
+										// you can also setRepeatCount(int)
 			heightAnimator.setInterpolator(new BounceInterpolator());	// set a TimeInterpolator
 
 			...
@@ -44,5 +46,43 @@
 		CycleInterpolator			Repeats the animation for a specified number of cycles. 
 		LinearInterpolator			An interpolator where the rate of change is constant  
 
+2. other tools to implement animation
+	transition framework
+		a new way to enable fancy transitions between view hierarchies
+			introduced in Android 4.4
+			You might define a transition that explodes a small view in one activity into a zoomed-in version of that view in another activity
+		you define scenes in XML layout files
+			and define transitions in animation XML file
+	Animation
+		just a out-of-date tool
+		it just changes the look of the View, does not change the actual location of the View
+			so if you click the new location of the view, nothing happens
+		and it cannot applied to objects other than Views
+	ViewPropertyAnimator
+		similar to ObjectAnimator
+		but can change multiple properties simultaneously
 
+3. more about ObjectAnimator
+	you can add use ObjectAnimator.isRunning(), hasEnded(), hasStarted() to tell the state of the Animator
+		or you can add AnimatorListeners to the Animator, so that you can do things at diffenrent states of it
+	you can use ObjectAnimator to change properties of any object, as long as the property has a getter and a setter following the naming convention
+		for those properties with complex types, you can create your own Evaluator
 
+	how to get the object's current property when animating
+		when you use ObjectAnimator heightAnimator = ObjectAnimator.ofFloat(mSunView, "y", sunYStart, sunYEnd)
+			the property you are changing is "y"
+			getTop() returns the same value all the time, even if actually the location of the View has changed
+				( I don't know why they did not make them consistant)
+		so if you want to get the real location of the view
+			use getY()
+
+4. ViewTreeObserver.OnGlobalLayoutListener
+	before getting the location and size info of a View, such as calling getX(), getTop(), you have to make sure at least one layout pass is done before
+	the ViewTreeObserver.onGlobalLayoutListener listens to changes of the layout
+		view.getViewTreeObserver().viewTreeObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+		    @Override
+		    public void onGlobalLayout() {
+			mOriginHeight = mSunView.getTop();
+			Log.i(TAG, "mOriginHeight = " + mOriginHeight);
+		    }
+		});
