@@ -1,0 +1,175 @@
+1. custom view
+	two broad categories
+		simple
+			has no child views, almost always performs custom rendering
+		composite
+			typically manages child views, and usually delegates rendering to each child view
+	three steps to create a custom view
+		pick a superclass
+			for a simple custom view, View is the most common choice for it's a blank canvas
+			for a composite custom view, choose an appropraite layout class, such as FrameLayout
+		subclass the class and override the constructors
+		override other key methods to customize behaviors
+
+2. create a simple custom view
+	subclass View
+		public class BoxDrawingView extends View {
+
+		    // Used when creating the view in code
+		    public BoxDrawingView(Context context) {
+			this(context, null);
+		    }
+
+		    // Used when inflating the view from XML
+		    // attrs are those specified in XML
+		    public BoxDrawingView(Context context, AttributeSet attrs) {
+			super(context, attrs);
+		    }
+		}
+
+	use in a layout file, just like original Views
+		<com.bignerdranch.android.draganddraw.BoxDrawingView
+		    xmlns:android="http://schemas.android.com/apk/res/android"
+		    android:layout_width="match_parent"
+		    android:layout_height="match_parent"
+		    />
+
+3. handling touching event
+	you can set a View.OnTouchListener using method View.setOnTouchListener()
+	but since you subclassed View, you can just override onTouchEvent(MotionEvent)
+		an instance of MotionEvent includes the touch event's location and action
+			actions of a touch event:
+				ACTION_DOWN	user’s finger touches the screen
+				ACTION_MOVE	user moves finger on the screen
+				ACTION_UP	user lifts finger off the screen
+				ACTION_CANCEL	a parent view has intercepted the touch event
+	
+	code
+		@Override
+		public boolean onTouchEvent(MotionEvent event) {
+			PointF current = new PointF(event.getX(), event.getY());	// PointF is an Android class to represent a point
+
+			switch (event.getAction()) {
+			    case MotionEvent.ACTION_DOWN:
+				// Reset drawing state
+				mCurrentBox = new Box(current);			// Box is just a class I created 
+				mBoxen.add(mCurrentBox);
+				break;
+			    case MotionEvent.ACTION_MOVE:
+				if (mCurrentBox != null) {
+				    mCurrentBox.setCurrent(current);
+				    invalidate();				// call invalidate() to ask the View to redraw itself
+				}						// you make the View invalid, so it will draw itself to be valid again
+				break;
+			    case MotionEvent.ACTION_UP:
+				mCurrentBox = null;
+				break;
+			    case MotionEvent.ACTION_CANCEL:
+				mCurrentBox = null;
+				break;
+			}
+
+			return true;		// I think it means I am done dealing with the event, the event is of no use
+		}
+
+4. redering inside onDraw(Canvas)
+	Canvas and Paint
+		a Canvas is where you render on
+			you call its method to specify what and where to draw
+		a Paint specifies characteristics, for example color, font
+			you can create a Paint object and pass it when calling Canvas's method
+			example
+				mBoxPaint = new Paint();
+				mBoxPaint.setColor(0x22ff0000);	// ARGB, transparent when alpha is 0x00
+	override onDraw(Canvas)
+		@Override
+		protected void onDraw(Canvas canvas) {
+		    // Fill the background
+		    canvas.drawPaint(mBackgroundPaint);
+
+		    for (Box box : mBoxen) {
+			float left = Math.min(box.getOrigin().x, box.getCurrent().x);
+			float right = Math.max(box.getOrigin().x, box.getCurrent().x);
+			float top = Math.min(box.getOrigin().y, box.getCurrent().y);
+			float bottom = Math.max(box.getOrigin().y, box.getCurrent().y);
+
+			canvas.drawRect(left, top, right, bottom, mBoxPaint);
+		    }
+		}
+
+5. saving state of a view
+	use
+		protected Parcelable onSaveInstanceState()
+		protected void onRestoreInstanceState(Parcelable state)
+	note that
+		these methods are only called when your View has an ID !!!!!!!
+		it's recommended to use a Bundle as a Parcelable instead of implementing a Parcelable class yourself
+		you must also maintain the saved state of BoxDrawingView’s parent, the View class
+			Save the result of super.onSaveInstanceState() in your new Bundle
+			send it to the super class when calling super.onRestoreInstanceState(Parcelable).
+	code
+		// BoxDrawingView.java
+		@Override
+		protected Parcelable onSaveInstanceState() {
+			Bundle savedState = new Bundle();
+			savedState.putParcelable(SAVED_STATE_VIEW, super.onSaveInstanceState());
+			savedState.putParcelableArrayList(SAVED_STATE_BOXEN, mBoxen);
+			return savedState;
+		}
+
+		@Override
+		protected void onRestoreInstanceState(Parcelable state) {
+			Bundle bundle = (Bundle) state;
+			mBoxen = bundle.getParcelableArrayList(SAVED_STATE_BOXEN);
+			super.onRestoreInstanceState(bundle.getParcelable(SAVED_STATE_VIEW));
+		}
+
+		// Box.java
+		public class Box implements Parcelable {
+		    private PointF mOrigin;
+		    private PointF mCurrent;
+
+		    public Box(PointF origin) {
+			mOrigin = origin;
+			mCurrent = origin;
+		    }
+
+		    public Box(Parcel in)		// construct from a Parcel
+		    {
+			mOrigin = new PointF(in.readFloat(), in.readFloat());
+			mCurrent = new PointF(in.readFloat(), in.readFloat());
+		    }
+
+		    @Override
+		    public int describeContents() {	// returns a bitmask indicating the set of special object types marshaled by this Parcelable object instance.
+			return 0;			// for example if this Parcelable includes a file, then you should
+		    }					// return 0 | Parcelable.CONTENTS_FILE_DESCRIPTOR
+
+		    @Override
+		    public void writeToParcel(Parcel dest, int flags) {
+			dest.writeFloat(mOrigin.x);
+			dest.writeFloat(mOrigin.y);
+			dest.writeFloat(mCurrent.x);
+			dest.writeFloat(mCurrent.y);
+		    }
+
+		    public static final Parcelable.Creator<Box> CREATOR = new Parcelable.Creator<Box>(){
+			@Override
+			public Box createFromParcel(Parcel source) {
+			    return new Box(source);
+			}
+
+			@Override
+			public Box[] newArray(int size) {
+			    return new Box[size];
+			}
+		    };
+		}
+
+	there's no use to retain the underlying fragment, because onDestroyView() will be called before onDetach()
+
+6. multiple touches
+	pointer index	tells you which pointer in the current set of pointers the event is for
+	pointer ID	gives you a unique ID for a specific finger in a gesture
+		The pointer index may change, but the pointer ID will not.
+	check out the document for MotionEvent
