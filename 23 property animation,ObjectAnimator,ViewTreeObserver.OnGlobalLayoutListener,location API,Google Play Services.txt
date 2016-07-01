@@ -86,3 +86,90 @@
 			Log.i(TAG, "mOriginHeight = " + mOriginHeight);
 		    }
 		});
+
+5. location API
+	android.location package
+		basic
+		lets you listen to location data from a variety of sources
+			including fine location points from a GPS radio and coarse points from cell towers or WiFi connections
+		not flexible
+			because when you move, the best source changes
+				but you have to manually subscribe to all of these different data sources and switch between them as appropriate
+	Fused Location Provider in Google Play Services
+		Play Services
+			a set of common services installed alongside the Google Play store application
+			only devices have the Play Store app installed and up to date will be able to use
+		using this on an emulator is tricky
+			use a hardware device if possible
+
+6. to use Google Play Services
+	add the Google Play Services library dependency
+			The services themselves live in the Play app, but the Play Services library contains all the code to interface with them
+		com.google.android.gms:play-services includes everything in Play Services
+		com.google.android.gms:play-services-location
+	permission
+		ACCESS_FINE_LOCATION is the GPS radio
+			ACCESS_COARSE_LOCATION is derived from cell towers or WiFi access points.
+		ask for both if you want to use fine location
+			so that if the fine location provider is not available, you can use the coarse location
+		code
+			<manifest ...>
+			    <uses-permission
+				android:name="android.permission.ACCESS_FINE_LOCATION" />
+			    <uses-permission
+				android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+	check if the Play Services is available
+		// in an Activity
+		@Override
+		protected void onResume() {
+			super.onResume();
+
+			GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+			int errorCode = googleApiAvailability.isGooglePlayServicesAvailable(this);
+
+			if(errorCode != ConnectionResult.SUCCESS)
+			{
+			    Dialog errorDialog = googleApiAvailability.getErrorDialog(this, errorCode, REQUEST_ERROR,
+				    new DialogInterface.OnCancelListener() {
+					@Override
+					public void onCancel(DialogInterface dialog) {
+					    finish();
+					}
+				    });
+			    errorDialog.show();		// show a dialog, and shut down the activity via finish() after that
+			}
+		}
+	create and connect to a GoogleApiClient
+		// in a fragment
+		@Override
+		public void onCreate(Bundle savedInstanceState) {
+		    super.onCreate(savedInstanceState);
+
+		    mClient = new GoogleApiClient.Builder(getActivity())
+			    .addApi(LocationServices.API)		// specify the API to use
+			    .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
+				@Override				// use this to do things after connected if nesessary
+				public void onConnected(Bundle bundle) {
+				    getActivity().invalidateOptionsMenu();
+				}
+
+				@Override
+				public void onConnectionSuspended(int i) {
+				}
+			    })						// can also add an OnConnectionFailedListener
+			    .build();
+		}
+
+		// Google recommends always connecting to the client in onStart() and disconnecting in onStop()
+		@Override
+		public void onStart() {
+		    super.onStart();
+		    mClient.connect();
+		}
+
+		@Override
+		public void onStop() {
+		    super.onStop();
+		    mClient.disconnect();
+		}

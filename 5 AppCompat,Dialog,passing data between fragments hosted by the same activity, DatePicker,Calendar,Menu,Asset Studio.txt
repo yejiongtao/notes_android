@@ -162,6 +162,12 @@
 				    return super.onOptionsItemSelected(item);
 			    }
 			}
+	refreshing menu
+		(for example enable/disable the button based on a variable)
+		call getActivity().invalidateOptionsMenu();
+			then the menu will be recreated
+		onCreateOptionsMenu(Menu, MenuInflater) will be entered again
+			so set your button based on the variable here
 		
 10. Android Asset Studio
 	android:icon="@android:drawable/ic_menu_add"

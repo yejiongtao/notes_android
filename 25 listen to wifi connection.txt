@@ -1,0 +1,28 @@
+1. listen to broadcast of change of wifi connection
+	(this is a standalone receiver, use dynamic receiver if you want)
+		note that "android.net.conn.CONNECTIVITY_CHANGE" is ConnectivityManager.CONNECTIVITY_ACTION in the code
+
+	receiver
+		public class WifiReceiver extends BroadcastReceiver {
+
+		    @Override
+		    public void onReceive(Context context, Intent intent) {     
+			ConnectivityManager conMan = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE); 
+			NetworkInfo netInfo = conMan.getActiveNetworkInfo();
+			if (netInfo != null && netInfo.getType() == ConnectivityManager.TYPE_WIFI) 
+			    Log.d("WifiReceiver", "Have Wifi Connection");
+			else
+			    Log.d("WifiReceiver", "Don't have Wifi Connection");    
+		    }   
+		};
+	permission
+		<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	manifest
+		<receiver android:name=".WifiReceiver">
+		    <intent-filter>
+			<action android:name="android.net.conn.CONNECTIVITY_CHANGE" />	// only receive the CONNECTIVITY_CHANGE broadcast
+		    </intent-filter>							// and then check the connectivity of wifi in the receiver
+		</receiver>
+
+
+
