@@ -1,0 +1,135 @@
+1. listen to broadcast of change of wifi connection
+	(this is a standalone receiver, use dynamic receiver if you want)
+		note that "android.net.conn.CONNECTIVITY_CHANGE" is ConnectivityManager.CONNECTIVITY_ACTION in the code
+
+	receiver
+		public class WifiReceiver extends BroadcastReceiver {
+
+		    @Override
+		    public void onReceive(Context context, Intent intent) {     
+			ConnectivityManager conMan = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE); 
+			NetworkInfo netInfo = conMan.getActiveNetworkInfo();
+			if (netInfo != null && netInfo.getType() == ConnectivityManager.TYPE_WIFI) 
+			    Log.d("WifiReceiver", "Have Wifi Connection");
+			else
+			    Log.d("WifiReceiver", "Don't have Wifi Connection");    
+		    }   
+		};
+	permission
+		<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	manifest
+		<receiver android:name=".WifiReceiver">
+		    <intent-filter>
+			<action android:name="android.net.conn.CONNECTIVITY_CHANGE" />	// only receive the CONNECTIVITY_CHANGE broadcast
+		    </intent-filter>							// and then check the connectivity of wifi in the receiver
+		</receiver>
+
+2. Material design
+		introduced in 5.0
+	Elevation and Z values
+		you give each View an elevation, and then Android will draw the shadow for you
+			in earlier API version, the elevation attribute is silently ignored, so no need to worry about compatibility.
+		how?
+			setting in the layout
+				<Button xmlns:android="http://schemas.android.com/apk/res/android"
+				    ...
+				    android:elevation="2dp"/>
+			or in the code
+				setElevation(float)
+		to change a View's elevation
+			use the translationZ and Z properties
+	
+	State list animators
+		counterpart to the state list drawable
+			instead of switching out one drawable for another, they animate the view into a different state
+		e.g.
+			// res/animator
+			<selector xmlns:android="http://schemas.android.com/apk/res/android">
+			    <item android:state_pressed="true">
+				<objectAnimator android:propertyName="translationZ"
+						android:duration="100"
+						android:valueTo="6dp"
+						android:valueType="floatType"
+						/>
+			    </item>
+			    <item android:state_pressed="false">
+				<objectAnimator android:propertyName="translationZ"
+						android:duration="100"
+						android:valueTo="0dp"
+						android:valueType="floatType"
+				    />
+			    </item>
+			</selector>
+	state list drawable
+		<?xml version="1.0" encoding="utf-8"?>
+		<animated-selector xmlns:android="http://schemas.android.com/apk/res/android">
+		    <item android:id="@+id/pressed"
+			  android:drawable="@drawable/button_beat_box_pressed"
+			  android:state_pressed="true"/>
+		    <item android:id="@+id/released"
+			  android:drawable="@drawable/button_beat_box_normal" />
+
+		    <transition
+			android:fromId="@id/released"
+			android:toId="@id/pressed">
+			<animation-list>
+			    <item android:duration="10" android:drawable="@drawable/button_frame_1" />
+			    <item android:duration="10" android:drawable="@drawable/button_frame_2" />
+			    <item android:duration="10" android:drawable="@drawable/button_frame_3" />
+			    ...
+			</animation-list>
+		    </transition>
+		</animated-selector>
+
+3. some animation tools come with material design
+	Circular reveal
+		to animate revealing a view
+		static Animator ViewAnimationUtils.createCircularReveal(View view, int centerX, int centerY, float startRadius, float endRadius)
+			view: the view to reveal
+			centerX, centerY: the beginning point, usually the point where the touch event happens
+			returns an Animator, you can call start() on it
+
+	Shared element transitions
+		for example, when you click on a small image, another view of the same picture appears
+		to use
+			turn on activity transitions
+				AppCompat inherits from the Material theme, which turns on activity transitions for you
+			Set transition name values for each shared element view.
+				you can do this in the code or in the layout xml file
+			Start your next activity with an ActivityOptions that will trigger the transition.
+		sample
+			set the transitionName attribute for the zoomed-in image
+				<ImageView
+					...
+					android:transitionName="image"/>
+			write a static method in the zoomed-in acticity to let other activities start it
+				public static void startWithTransition(Activity activity, Intent intent, View sourceView) {
+					// sourceView here is the original small image
+					// activity is the original activity
+				    ViewCompat.setTransitionName(sourceView, "image");
+				    ActivityOptionsCompat options = ActivityOptionsCompat
+					.makeSceneTransitionAnimation(activity, sourceView, "image");
+
+				    activity.startActivity(intent, options.toBundle());
+				}
+
+4. some view components come with material design
+	CardView
+		add dependency com.android.support:cardview-v7
+		use it as any other ViewGroup
+			it's a FrameLayout subclass
+			so just add children elements to it
+	floating action button
+		add dependency com.android.support:design:22.2.0
+		place a FloatingActionButton in your layout file
+			and set its src attribute to the image that you want to display
+		CoordinatorLayout
+			a subclass of FrameLayout, usually used with FloatingActionButton
+			putting a FloatingActionButton in a CoordinatorLayout will move up the button when you display a Snackbar
+				so that it won't be covered
+	snackbars
+		animate up from the bottom of the screen
+		similar to Toast
+			Snackbar.make(container, R.string.munch, Snackbar.LENGTH_SHORT).show();
+		
+
