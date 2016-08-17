@@ -1,0 +1,292 @@
+1. getting mac address
+	before 6.0
+		Context content = getApplicationContent();
+		WifiManager wifiManager = (WifiManager) content.getSystemService(Content.WIFI_SERVICE);
+		WifiInfo info = wifiManager.getConnectionInfo();
+		String macAddress = info.getMacAddress();
+		// you need <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+
+	after 6.0, the method above returns "02:00:00:00:00:00", and so does BluetoothAdapter.getAddress()
+		List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
+                for (NetworkInterface nif : all) {
+                    if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
+
+                    byte[] macBytes = nif.getHardwareAddress();
+                    if (macBytes == null) {
+                        break;
+                    }
+
+                    StringBuilder res1 = new StringBuilder();
+                    for (byte b : macBytes) {
+                        res1.append(String.format("%02X:",b));
+                    }
+
+                    if (res1.length() > 0) {	// delete the last ":"
+                        res1.deleteCharAt(res1.length() - 1);
+                    }
+                    String macAddress = res1.toString();
+		// <uses-permission android:name="android.permission.INTERNET"/>
+
+2. getting ip address (all classes are from java)
+	may return loopback address
+		InetAddress.getLocalHost().getHostAddress();
+	better solution
+            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for(NetworkInterface networkInterface: interfaces){
+                List<InetAddress> addresses = Collections.list(networkInterface.getInetAddresses());
+                for(InetAddress inetAddress: addresses){
+                    if(!inetAddress.isLoopbackAddress()){
+                        String ipAddress = inetAddress.getHostAddress();
+                        if(ipAddress.indexOf(":")<0)
+                            return ipAddress;
+                    }
+                }
+            }
+
+3. BLE
+	basis
+		hardware address
+			just like MAC address
+		characteristic
+			each characteristic encapsulates a single data point
+			(and each characteristic is also identified by a uuid)
+		service
+			a service has one or more characteristics
+			in English
+				a service is like a protocol, which defines in what way the data(characteristics) is organized
+		UUID
+			each service is identified by a UUID
+			which is 16-bit for officially adopted BLE services, or 128-bit for custom services
+		profile
+			a collection of services, defined by the developer
+
+	permissions
+		<uses-permission android:name="android.permission.BLUETOOTH"/>
+			to perform any Bluetooth communication, such as requesting a connection, accepting a connection, and transferring data
+		<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+			to initiate device discovery or manipulate Bluetooth settings
+		<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+			new requirement to use Bluetooth in Android 6.0
+
+		<uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
+			to declare that this app is available to BLE-capable devices only
+			if you want to make it available also to those don't support BLE
+				<uses-feature android:name="android.hardware.bluetooth_le" android:required="false"/>
+				and then check it in the code
+					if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+					    Toast.makeText(this, R.string.ble_not_supported, Toast.LENGTH_SHORT).show();
+					    finish();
+					}
+	procedure
+		enable the BLE
+		scan for BLE devices
+			use BluetoothAdapter.startLeScan(LeScanCallback) before API 21
+			use BluetoothLeScanner.startScan(ScanCallback) after API 21
+		connect to BLE gatt server and read attributes
+
+	great sample code
+		public class MainActivity extends ActionBarActivity {
+		    private static final int PERMISSION_REQUEST_COARSE_LOCATION = 0;
+
+		    private BluetoothAdapter mBluetoothAdapter;
+		    private int REQUEST_ENABLE_BT = 1;
+		    private Handler mHandler;
+		    private static final long SCAN_PERIOD = 10000;
+		    private BluetoothLeScanner mLEScanner;
+		    private ScanSettings settings;
+		    private List<ScanFilter> filters;
+		    private BluetoothGatt mGatt;
+		 
+		    @Override
+		    protected void onCreate(Bundle savedInstanceState) {
+			super.onCreate(savedInstanceState);
+			setContentView(R.layout.activity_main);
+			mHandler = new Handler();
+			if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {	// check whether BLE is supported
+			    Toast.makeText(this, "BLE Not Supported",
+				    Toast.LENGTH_SHORT).show();
+			    finish();
+			}
+			final BluetoothManager bluetoothManager =
+				(BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+			mBluetoothAdapter = bluetoothManager.getAdapter();
+
+			// ask for runtime permission
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+			    if(checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+				requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
+			    }
+		 
+		    }
+		 
+		    @Override
+		    protected void onResume() {
+			super.onResume();
+			if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
+			    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);		// prompt the user to enable bluetooth
+			    startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+			} else {
+			    if (Build.VERSION.SDK_INT >= 21) {
+				mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
+				settings = new ScanSettings.Builder()
+					.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+					.build();
+				filters = new ArrayList<ScanFilter>();
+			    }
+			    scanLeDevice(true);			// start scanning. this is a custom function
+			}
+		    }
+		 
+		    @Override
+		    protected void onPause() {
+			super.onPause();
+			if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
+			    scanLeDevice(false);
+			}
+		    }
+		 
+		    @Override
+		    protected void onDestroy() {
+			if (mGatt == null) {
+			    super.onDestroy();
+			} else {
+			    mGatt.close();
+			    mGatt = null;
+			    super.onDestroy();
+			}
+		    }
+		 
+		    @Override
+		    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+			if (requestCode == REQUEST_ENABLE_BT) {
+			    if (resultCode == Activity.RESULT_CANCELED) {		//Bluetooth not enabled.
+				finish();
+				return;
+			    }
+			}
+			super.onActivityResult(requestCode, resultCode, data);
+		    }
+
+		    @Override
+		    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+			switch (requestCode) {
+				case PERMISSION_REQUEST_COARSE_LOCATION: {
+					if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+						Log.d(TAG, "coarse location permission granted");
+					} else {
+						finish();
+					}
+					return;
+				}
+			}
+		    }
+		 
+		    private void scanLeDevice(final boolean enable) {
+			if (enable) {
+			    mHandler.postDelayed(new Runnable() {		// a Runnable runs after SCAN_PERIOD, to stop scanning
+				@Override
+				public void run() {
+				    if (Build.VERSION.SDK_INT < 21) {
+					mBluetoothAdapter.stopLeScan(mLeScanCallback);
+				    } else {
+					mLEScanner.stopScan(mScanCallback);
+		 
+				    }
+				}
+			    }, SCAN_PERIOD);
+			    if (Build.VERSION.SDK_INT < 21) {
+				mBluetoothAdapter.startLeScan(mLeScanCallback);
+			    } else {
+				mLEScanner.startScan(filters, settings, mScanCallback);
+			    }
+			} else {
+			    if (Build.VERSION.SDK_INT < 21) {
+				mBluetoothAdapter.stopLeScan(mLeScanCallback);
+			    } else {
+				mLEScanner.stopScan(mScanCallback);
+			    }
+			}
+		    }
+		 
+		 
+		    private ScanCallback mScanCallback = new ScanCallback() {			// for API 21 and above
+			@Override
+			public void onScanResult(int callbackType, ScanResult result) {
+			    Log.i("callbackType", String.valueOf(callbackType));
+			    Log.i("result", result.toString());
+			    BluetoothDevice btDevice = result.getDevice();			// you can get the UUIDs, hardware address here
+			    connectToDevice(btDevice);						// if that's all you want, you don't have to connect to it
+			}
+		 
+			@Override
+			public void onBatchScanResults(List<ScanResult> results) {
+			    for (ScanResult sr : results) {
+				Log.i("ScanResult - Results", sr.toString());
+			    }
+			}
+		 
+			@Override
+			public void onScanFailed(int errorCode) {
+			    Log.e("Scan Failed", "Error Code: " + errorCode);
+			}
+		    };
+		 
+		    private BluetoothAdapter.LeScanCallback mLeScanCallback =			// for below API 21
+			    new BluetoothAdapter.LeScanCallback() {
+				@Override
+				public void onLeScan(final BluetoothDevice device, int rssi,
+						     byte[] scanRecord) {
+				    runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+					    Log.i("onLeScan", device.toString());
+					    connectToDevice(device);
+					}
+				    });
+				}
+			    };
+		 
+		    public void connectToDevice(BluetoothDevice device) {
+			if (mGatt == null) {
+			    mGatt = device.connectGatt(this, false, gattCallback);
+			    scanLeDevice(false);// will stop after first device detection
+			}
+		    }
+		 
+		    private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
+			@Override
+			public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+			    Log.i("onConnectionStateChange", "Status: " + status);
+			    switch (newState) {
+				case BluetoothProfile.STATE_CONNECTED:
+				    Log.i("gattCallback", "STATE_CONNECTED");
+				    gatt.discoverServices();
+				    break;
+				case BluetoothProfile.STATE_DISCONNECTED:
+				    Log.e("gattCallback", "STATE_DISCONNECTED");
+				    break;
+				default:
+				    Log.e("gattCallback", "STATE_OTHER");
+			    }
+		 
+			}
+		 
+			@Override
+			public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+			    List<BluetoothGattService> services = gatt.getServices();
+			    Log.i("onServicesDiscovered", services.toString());
+			    gatt.readCharacteristic(services.get(1).getCharacteristics().get
+				    (0));
+			}
+		 
+			@Override
+			public void onCharacteristicRead(BluetoothGatt gatt,
+							 BluetoothGattCharacteristic
+								 characteristic, int status) {
+			    Log.i("onCharacteristicRead", characteristic.toString());
+			    gatt.disconnect();
+			}
+		    };
+		}
+		
+

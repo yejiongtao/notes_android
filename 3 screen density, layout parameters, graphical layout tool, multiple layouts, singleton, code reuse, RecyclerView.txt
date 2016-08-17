@@ -196,3 +196,10 @@ Button, CheckBox, TextView, EditText, RecyclerView, Toast, ImageIcon, ViewPager,
 		a fragment with a layout
 		somewhere in the layout of the fragment, place the RecyclerView
 		there's a layout for the item of the list, bind it with the ViewHolder
+
+10. refresh a RecyclerView
+	when the amount of the items in the RecyclerView changes, you have to call notifyItemRemoved(), notifyItemInserted(), notifyItemRangeChanged(), etc
+		when the content of a item changes, you have to call notifyItemChanged() on the Adapter
+	a easiser way
+		call Adapter.notifyDataSetChanged()
+			this implies that both the structure and the content are changed

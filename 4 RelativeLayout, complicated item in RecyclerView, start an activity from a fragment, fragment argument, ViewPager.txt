@@ -65,6 +65,8 @@
 					}
 		retrieving arguments
 			calls Fragment's method getArguments().getInt("")
+	ATTENTION:
+		you cannot call setArguments() on an already active fragment
 
 8. reloading the list
 	create a method to create Adapter, or to call notifyDataSetChanged() if the Adapter already exists

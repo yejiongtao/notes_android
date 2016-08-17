@@ -1,0 +1,130 @@
+1. advertising BLE
+	introduced in API 21, so set the minimum SDK to be 21
+	permissions
+		<uses-permission android:name="android.permission.BLUETOOTH" />
+		<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+		<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+			a new requirement for using Bluetooth on Android 6.0 devices
+
+	check whether the device supports multiple advertisements
+		(of course, before this you have to check if the Bluetooth is available)
+		if( !BluetoothAdapter.getDefaultAdapter().isMultipleAdvertisementSupported() ) {
+		    Toast.makeText( this, "Multiple advertisement not supported", Toast.LENGTH_SHORT ).show();
+		    // disable the functionality or something
+		}
+	advertising
+		// get the BluetoothLeAdvertiser
+		BluetoothLeAdvertiser advertiser = BluetoothAdapter.getDefaultAdapter().getBluetoothLeAdvertiser();
+
+		// create the settings
+		AdvertiseSettings settings = new AdvertiseSettings.Builder()
+			.setAdvertiseMode( AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY )
+				// set the frequency, can be ADVERTISE_MODE_LOW_LATENCY, ADVERTISE_MODE_BALANCED, ADVERTISE_MODE_LOW_POWER
+			.setTxPowerLevel( AdvertiseSettings.ADVERTISE_TX_POWER_HIGH )
+				// set the power level, can be ultra low, low, medium or high
+			.setConnectable( false )
+			.build();
+
+		// create the data
+		ParcelUuid pUuid = new ParcelUuid( UUID.fromString( getString( R.string.ble_uuid ) ) );
+			// uuid, you give a 128-bit one, but the Android system only uses 16-bit uuid
+			// it will be automatically adjusted
+		AdvertiseData data = new AdvertiseData.Builder()
+			.setIncludeDeviceName( true )
+			.addServiceUuid( pUuid )
+			.addServiceData( pUuid, "Data".getBytes(Charset.forName("UTF-8")))	// aditional data
+			.build();
+		
+		// create a callback and then advertise
+		AdvertiseCallback advertisingCallback = new AdvertiseCallback() {
+		    @Override
+		    public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+			super.onStartSuccess(settingsInEffect);
+		    }
+		 
+		    @Override
+		    public void onStartFailure(int errorCode) {
+			Log.e( "BLE", "Advertising onStartFailure: " + errorCode );
+			super.onStartFailure(errorCode);
+		    }
+		};
+		 
+		advertiser.startAdvertising( settings, data, advertisingCallback );
+		
+2. toggle button
+	ToggleButton or Switch
+		Switch is introduced in Android 4.0
+		To detect when the user activates the button or switch, create an CompoundButton.OnCheckedChangeListener object
+		(you can also set some text for them)
+	toggle button in menu
+		you set the item 
+			android:checkable="true"
+		remember you have to set the checked state yourself
+			    @Override
+			    public boolean onOptionsItemSelected(MenuItem item) {
+				switch (item.getItemId()){
+				    case R.id.menu_item_advertising_ble:
+					if(item.isChecked()) {
+					    item.setChecked(false);
+					    Toast.makeText(this, "unchecked", Toast.LENGTH_SHORT).show();
+					}
+					else {
+					    item.setChecked(true);
+					    Toast.makeText(this, "checked", Toast.LENGTH_SHORT).show();
+					}
+					return true;
+				}
+				return super.onOptionsItemSelected(item);
+			    }
+		and you can use State list drawables to change the icon when checked
+			see 10
+
+3. Android M run-time permissions
+	beginning in Android 6.0 (API 23), users grant permissions when the app is running
+		not when whey install the app
+	two types of permissions
+		normal permissions
+			system grants the permissions automatically if your app lists a normal permission in the manifest
+		dangerous permissions
+			the user has to explicitly give approval
+			before 6.0, it prompts before installing
+			after 6.0, you have to prompt the user by yourself when the app is running
+	code
+		// usually in onCreate()
+		// Here, thisActivity is the current activity
+		if (ContextCompat.checkSelfPermission(thisActivity,
+				Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+
+			ActivityCompat.requestPermissions(thisActivity,
+				new String[]{Manifest.permission.READ_CONTACTS},
+				MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+
+			// MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+			// app-defined int constant. The callback method gets the
+			// result of the request.
+		}
+		
+		// handle result
+		@Override
+		public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+		    switch (requestCode) {
+			case MY_PERMISSIONS_REQUEST_READ_CONTACTS: {
+			    // If request is cancelled, the result arrays are empty.
+			    if (grantResults.length > 0
+				&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+				// permission was granted, yay! Do the
+				// contacts-related task you need to do.
+
+			    } else {
+
+				// permission denied, boo! Disable the
+				// functionality that depends on this permission.
+			    }
+			    return;
+			}
+
+			// other 'case' lines to check for other
+			// permissions this app might request
+		    }
+		}

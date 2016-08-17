@@ -1,0 +1,150 @@
+1. Toolbar and Navigation Drawer
+	creating a Navigation Drawer
+		create a Drawer Layout
+			<android.support.v4.widget.DrawerLayout
+			    xmlns:android="http://schemas.android.com/apk/res/android"
+			    android:id="@+id/drawer_layout"
+			    android:layout_width="match_parent"
+			    android:layout_height="match_parent">
+
+			    <!-- The main content view -->		// the first one must be the content
+			    <FrameLayout
+				android:id="@+id/content_frame"
+				android:layout_width="match_parent"	// got to be match_parent
+				android:layout_height="match_parent" />
+
+			    <!-- The navigation drawer -->
+			    <ListView android:id="@+id/left_drawer"	// you can use ListView, NavigationView, RecyclerView, or whatever View you like
+				android:layout_width="240dp"		// should be no more than 320dp, so the user can see a portion of the main content
+				android:layout_height="match_parent"
+				android:layout_gravity="start"		// start means left when it's left-to-right, and right when it's right-to-left
+				android:choiceMode="singleChoice"
+				android:divider="@android:color/transparent"
+				android:dividerHeight="0dp"
+				android:background="#111"/>
+			</android.support.v4.widget.DrawerLayout>
+		
+		handle item click event
+			here use ListView as an example
+				mPlanetTitles = getResources().getStringArray(R.array.planets_array);
+				mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+				mDrawList = (ListView) findViewById(R.id.left_drawer);
+
+				mDrawList.setAdapter(new ArrayAdapter<String>(this, R.layout.drawer_list_item, mPlanetTitles));
+					// R.layout.drawer_list_item is just a TextView
+					// if it's a more complex layout, then the resource id of a TextView inside the layout should be given as another argument
+					// you can call ArrayAdapter.add(), remove(), etc.
+					// they automatically call notifyDataSetChanged()
+					// using this to set the adapter, R.layout.drawer_list_item must contain only a TextView!
+
+				mDrawList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+				    @Override
+				    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+					// do real things here, for example create a fragment
+					// use FragmentManager.replace() instead of .add()
+					mDrawList.setItemChecked(position, true);
+					mDrawerLayout.closeDrawer(mDrawList);
+				    }
+				});
+		
+		open the drawer using home icon
+			// inside onCreate(), set the icon and enable it
+			getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_action_drawer);	
+				// material design icon can be gotten at https://github.com/google/material-design-icons/tree/master/navigation
+				// action bar icon should be 24dp
+			getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+
+			// when a menu option selected
+			public boolean onOptionsItemSelected(MenuItem item) {
+				int id = item.getItemId();
+				if(id == android.R.id.home){
+				    if(mDrawerLayout.isDrawerOpen(mDrawList))
+					mDrawerLayout.closeDrawer(mDrawList);
+				    else
+					mDrawerLayout.openDrawer(mDrawList);
+				    return true;
+				}
+				return super.onOptionsItemSelected(item);
+			}
+		
+	Toolbar
+		default Toolbar
+			when you use AppCompatActivity, there's a default Toolbar set fot you
+			but it's always at the top of the page
+				if you want your navigation drawer to be on top of the Toolbar, you should customize your own Toolbar
+		custom Toolbar
+			put it in the layout
+				<DrawerLayout>
+					<!-- The main content view -->
+					<LinearLayout>
+						<include layout="@layout/toolbar">	// cuz your toolbar may be needed in different layouts
+						// other things
+					</LinearLayout>
+
+					<!-- The navigation drawer -->
+					<ListView/>
+				</DrawerLayout>
+
+				// toolbar layout
+				<android.support.v7.widget.Toolbar xmlns:android="http://schemas.android.com/apk/res/android"
+					xmlns:local="http://schemas.android.com/apk/res-auto"
+					android:id="@+id/toolbar"
+					android:layout_width="match_parent"
+					android:layout_height="?attr/actionBarSize"
+					android:background="@color/primary"
+					local:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+					local:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+
+			setup in the code
+				Toolbar tb = (Toolbar) findViewById(R.id.toolbar);
+				setSupportActionBar(tb);	// use your toolbar as the ActionBar
+				// then you can have access to the ActionBar using ActionBar ab = getSupportActionBar();
+			and if you're using Lollipop and AppCompatActivity
+				include these items in the theme, otherwise your Toolbar with conflict with the default one
+					<!-- Base application theme. -->
+					<style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+					    <!-- Customize your theme here. -->
+					    <item name="colorPrimary">@color/colorPrimary</item>
+					    <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+					    <item name="colorAccent">@color/colorAccent</item>
+					    <item name="windowActionBar">false</item>		// here
+					    <item name="windowNoTitle">true</item>		// and here
+					</style>
+	
+	NavigationView
+		(The menu contents can be populated by a menu resource file)
+		layout file
+			<android.support.design.widget.NavigationView
+				android:id="@+id/navigation"
+				android:layout_width="wrap_content"
+				android:layout_height="match_parent"
+				android:layout_gravity="start"
+				app:menu="@menu/nav_items" />
+			// nav_items
+			<menu xmlns:android="http://schemas.android.com/apk/res/android">
+			<group android:checkableBehavior="single">
+				<item android:id="@+id/fab"
+				android:title="Floating Action Button"
+				android:icon="@drawable/ic_action_fab" />
+				 
+				<item android:id="@+id/star"
+				android:title="Star"
+				android:icon="@drawable/ic_action_star" />
+			</group>
+			</menu>
+
+		setup code
+			NavigationView navView = (NavigationView) findViewById(R.id.navigation);
+			navView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+				@Override
+				public boolean onNavigationItemSelected(MenuItem menuItem) {
+				}
+			});
+		(when to use: I think if your items in the drawer are fixed, then use NavigationView. if they're variable, use ListView or something)
+
+	to refresh the ListView inside the drawer
+		try call notifyDataSetChanged() on its adapter
+		or call setAdapter() again on the ListView
+
+
+
