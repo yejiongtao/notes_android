@@ -183,9 +183,11 @@
 		 
 		    private void scanLeDevice(final boolean enable) {
 			if (enable) {
-			    mHandler.postDelayed(new Runnable() {		// a Runnable runs after SCAN_PERIOD, to stop scanning
-				@Override
-				public void run() {
+			    mHandler.postDelayed(new Runnable() {	// a Runnable runs after SCAN_PERIOD, to stop scanning
+				@Override				// this approach is good in an Activity, but not in a service
+				public void run() {			// because in a service, after SCAN_PERIOD, the thread this handler in may already be killed
+									// to solve that, use Handler.post() instead
+										and then call Thead.sleep(SCAN_PERIOD) in the run function
 				    if (Build.VERSION.SDK_INT < 21) {
 					mBluetoothAdapter.stopLeScan(mLeScanCallback);
 				    } else {
@@ -212,9 +214,9 @@
 		    private ScanCallback mScanCallback = new ScanCallback() {			// for API 21 and above
 			@Override
 			public void onScanResult(int callbackType, ScanResult result) {
-			    Log.i("callbackType", String.valueOf(callbackType));
-			    Log.i("result", result.toString());
 			    BluetoothDevice btDevice = result.getDevice();			// you can get the UUIDs, hardware address here
+			    List<ParcelUuId> uuIds = result.getScanRecord().getServiceUuIds();
+			    String address = btDevice.getAddress();				// but! the address of the BLE may be a random one!
 			    connectToDevice(btDevice);						// if that's all you want, you don't have to connect to it
 			}
 		 
@@ -240,6 +242,7 @@
 					@Override
 					public void run() {
 					    Log.i("onLeScan", device.toString());
+					    // to get the uuids, you have to parse the byte[] scanRecord yourself
 					    connectToDevice(device);
 					}
 				    });

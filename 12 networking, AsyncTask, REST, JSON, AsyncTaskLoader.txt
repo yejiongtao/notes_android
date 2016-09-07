@@ -55,7 +55,7 @@
 		onPostExecute()
 			AsyncTask.onPostExecute() is run after doInBackground()
 			and it's run on the main thread! so it's safe to update the UI with it
-				private class FetchItemsTask extends AsyncTask<Void, Void, Void List<GalleryItem>> {	// note the third generic parameter
+				private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {	// note the third generic parameter
 					@Override
 					protected Void List<GalleryItem> doInBackground(Void... params) {	// returns a List
 

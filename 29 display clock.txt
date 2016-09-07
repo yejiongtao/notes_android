@@ -1,0 +1,29 @@
+1. display a clock
+	BroadcastReceiver mBroadcastReceiver;
+	private final SimpleDateFormat mSdfWatchTime = new SimpleDateFormat("HH:mm");
+	private TextView mTextViewTime;
+
+	@Override
+	public void onStart() {
+	    super.onStart();
+	    mBroadcastReceiver = new BroadcastReceiver() {				// a system broadcast will be sent every minute
+		    @Override
+		    public void onReceive(Context ctx, Intent intent) {
+			if (intent.getAction().equals(Intent.ACTION_TIME_TICK))
+			    mTextViewTime.setText(mSdfWatchTime.format(new Date()));	// use new Date() to get the current time
+		    }
+		};
+
+	    registerReceiver(mBroadcastReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
+	}
+
+	@Override
+	public void onStop() {
+	    super.onStop();
+	    if (mBroadcastReceiver != null)
+		unregisterReceiver(mBroadcastReceiver);
+	}
+
+	// remember to set the time when the view is first created
+
+

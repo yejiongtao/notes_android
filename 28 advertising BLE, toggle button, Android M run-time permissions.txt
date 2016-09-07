@@ -22,6 +22,9 @@
 				// set the frequency, can be ADVERTISE_MODE_LOW_LATENCY, ADVERTISE_MODE_BALANCED, ADVERTISE_MODE_LOW_POWER
 			.setTxPowerLevel( AdvertiseSettings.ADVERTISE_TX_POWER_HIGH )
 				// set the power level, can be ultra low, low, medium or high
+				// ultra low can be detected within 2 meters approximately
+				// low within 10 meters approximately
+				// note that they vary across devices
 			.setConnectable( false )
 			.build();
 
@@ -78,6 +81,7 @@
 			    }
 		and you can use State list drawables to change the icon when checked
 			see 10
+			or just setIcon() in the code
 
 3. Android M run-time permissions
 	beginning in Android 6.0 (API 23), users grant permissions when the app is running

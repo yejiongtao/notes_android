@@ -133,3 +133,37 @@
 		local service binding
 		remote service binding
 			give applications in other processes the ability to invoke methods on your service
+
+3. to check if a service is on
+	boolean isMyServiceRunning(Class<?> serviceClass) {
+	    ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+	    for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+		if (serviceClass.getName().equals(service.service.getClassName())) {
+		    return true;
+		}
+	    }
+	    return false;
+	}
+
+4. repeating works in a shorter interval
+	since that the minimum interval of an alarm is 60 seconds, we should use another way to implement this
+	using Handler
+		Runnable runnable = new Runnable() {
+		    @Override
+		    public void run() {
+			// do your stuff here, called every second
+			mHandler.postDelayed(this, 1000);
+		    }
+		};
+
+		// start it with:
+		mHandler.post(runnable);
+	to cancel it
+		mHandler.removeCallbacks(runnable);
+	but, note that this may not work in a service
+		because the service may be dead defore 1 second of time passes
+		to use this in a service
+			Thread.sleep(1000);
+			use post() instead of postDelayed()
+		still! it may not work!
+			to solve this, you start a new service after sleeping, instead of run the runnable

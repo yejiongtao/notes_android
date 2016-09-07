@@ -98,6 +98,7 @@
 			fires up a background thread!!!
 			and deals with the arrived and incoming intents in sequence
 				when there are no commands left in the queue, the service stops and is destroyed
+
 4. use IntentService
 	subclass IntentService
 		public class PollService extends IntentService {

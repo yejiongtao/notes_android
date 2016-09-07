@@ -63,6 +63,13 @@
 			to close it manually
 				you call .cancel() on the AlertDialog instance
 
+		change the font size
+			TextView textView = (TextView) alertDialog.findViewById(android.R.id.message);
+			textView.setTextSize(24);
+			// note that you must call .show() instead of .create() on the builder
+				and .show() must be called BEFORE you findView
+			// and you must have called .setMessage(), otherwise the textView will be null
+
 4. passing data between fragments hosted by the same Activity (but not only one fragment visible at a time)
 	from the old fragment to a new one
 		just pass the data by fragment arguments

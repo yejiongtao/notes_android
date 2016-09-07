@@ -132,6 +132,9 @@
 					// here you do something about the widgets
 					return v;
 				}
+
+				// you can use getActivity().findViewById() to find views outside of this fragment
+				// use it in onActivityCreated(), so that the view is already created
 			}
 		wire up the widgets (add listeners, etc.)
 	to host a UI fragment, an activity should:
